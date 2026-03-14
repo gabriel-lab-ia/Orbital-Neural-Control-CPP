@@ -74,7 +74,7 @@ Generate the learning-curve SVG:
 python3 tools/plot_learning_curve.py artifacts/learning_curve.csv artifacts/learning_curve.svg
 ```
 
-## MuJoCo Training
+ MuJoCo Training
 
 Build with MuJoCo support:
 
@@ -132,6 +132,10 @@ After pushing the repository to GitHub and enabling Pages, the generated site ex
 - `/` landing page
 - `/demo/neural_network_3d.html` direct 3D neural viewer
 - `/demo/learning_curve.svg` exported learning curve
+
+- https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/
+- https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/demo/neural_network_3d.html
+
 
 ## Generated Outputs
 
