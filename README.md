@@ -1,4 +1,4 @@
-# Neuro Motor CPP
+Neuro Motor CPP
 
 `Neuro Motor CPP` is a C++20 reinforcement learning project that combines:
 
@@ -13,7 +13,7 @@ Live demo: `https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/`
 
 Direct 3D viewer: `https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/demo/neural_network_3d.html`
 
-## Highlights
+Highlights
 
 - PPO implementation in modern C++ with `LibTorch`
 - Optional MuJoCo integration through a clean `Environment` interface
@@ -22,7 +22,7 @@ Direct 3D viewer: `https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/demo/
 - Standalone 3D HTML viewer for policy structure and activations
 - Static web publishing path through `docs/` for GitHub Pages
 
-## Repository Layout
+Repository Layout
 
 - `src/app/` application entrypoints and orchestration
 - `src/env/` environment interface and implementations
@@ -34,7 +34,7 @@ Direct 3D viewer: `https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/demo/
 - `docs/` static web site for GitHub Pages
 - `notebooks/` analysis notebooks
 
-## Requirements
+Requirements
 
 - GCC 13+
 - CMake 3.24+
@@ -42,7 +42,7 @@ Direct 3D viewer: `https://gabriel-lab-ia.github.io/PPO_Neural-Control-cpp/demo/
 - Eigen
 - MuJoCo 3.2.6 or newer for MuJoCo environments
 
-## Quick Start
+Quick Start
 
 This repository does not need to commit LibTorch binaries. If `lib/libtorch/` is missing, install the CPU package locally with:
 
