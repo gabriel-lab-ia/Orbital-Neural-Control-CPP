@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "configurations": [
+        {
+            "name": "Debug motor",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/motor",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/lib/libtorch/lib:${env:LD_LIBRARY_PATH}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable gdb pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "CMake: build motor"
+        }
+    ]
+}

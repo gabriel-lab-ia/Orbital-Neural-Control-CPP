@@ -1,0 +1,27 @@
+<mujoco model="nmc_cartpole">
+  <compiler angle="radian" coordinate="local"/>
+  <option timestep="0.02" gravity="0 0 -9.81" integrator="RK4"/>
+
+  <default>
+    <joint damping="0.05" armature="0.01"/>
+    <geom friction="0.8 0.1 0.1" rgba="0.8 0.6 0.4 1"/>
+  </default>
+
+  <worldbody>
+    <geom name="ground" type="plane" size="5 5 0.1" rgba="0.2 0.25 0.3 1"/>
+
+    <body name="cart" pos="0 0 0.1">
+      <joint name="slider" type="slide" axis="1 0 0" range="-3 3"/>
+      <geom name="cart_geom" type="box" size="0.15 0.10 0.06" mass="1.0"/>
+
+      <body name="pole" pos="0 0 0.06">
+        <joint name="hinge" type="hinge" axis="0 1 0" range="-3.14 3.14"/>
+        <geom name="pole_geom" type="capsule" fromto="0 0 0 0 0 0.6" size="0.035" mass="0.15"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="cart_motor" joint="slider" gear="25" ctrlrange="-1 1" ctrllimited="true"/>
+  </actuator>
+</mujoco>

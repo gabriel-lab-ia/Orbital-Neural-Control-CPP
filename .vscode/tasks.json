@@ -1,0 +1,66 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake: configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "dev"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "CMake: build motor",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake: configure",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "MuJoCo: view cartpole",
+            "type": "shell",
+            "command": "${workspaceFolder}/tools/view_mujoco.sh",
+            "args": [
+                "${workspaceFolder}/assets/mujoco/cartpole.xml"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "MuJoCo: view humanoid",
+            "type": "shell",
+            "command": "${workspaceFolder}/tools/view_mujoco.sh",
+            "args": [
+                "${env:HOME}/.local/mujoco-3.2.6/model/humanoid/humanoid.xml"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+# Build outputs
+/build/
+/cmake-build-*/
+/compile_commands.json
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+
+# IDE and local machine state
+.DS_Store
+.idea/
+.cache/
+.vscode/*.log
+.vscode/ipch/
+
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.kdbx
+secrets/
+
+# Experiment outputs
+artifacts/
+checkpoints/
+datasets/
+logs/
+runs/
+tmp/
+MUJOCO_LOG.TXT
+
+# Public repository dependency strategy
+lib/libtorch/

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860">
+<rect width="100%" height="100%" fill="#08111b"/>
+<text x="60" y="50" fill="#f4f8fc" font-size="28" font-family="DejaVu Sans, sans-serif">Neuro Motor CPP - PPO Learning Curve</text>
+<text x="60" y="80" fill="#9cb3ca" font-size="14" font-family="DejaVu Sans, sans-serif">Learning curve generated from the continuous-control PPO baseline and exported metrics</text>
+<text x="60" y="120" fill="#dce7f3" font-size="18" font-family="DejaVu Sans, sans-serif">Optimization diagnostics</text>
+<rect x="60.00" y="140.00" width="1080.00" height="280.00" fill="#101924" stroke="#314154" stroke-width="1"/>
+<text x="60.00" y="126.00" fill="#dce7f3" font-size="18" font-family="DejaVu Sans, sans-serif"></text>
+<line x1="60.00" y1="140.00" x2="1140.00" y2="140.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="144.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">67.92</text>
+<line x1="60.00" y1="210.00" x2="1140.00" y2="210.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="214.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">50.09</text>
+<line x1="60.00" y1="280.00" x2="1140.00" y2="280.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="284.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">32.26</text>
+<line x1="60.00" y1="350.00" x2="1140.00" y2="350.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="354.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">14.43</text>
+<line x1="60.00" y1="420.00" x2="1140.00" y2="420.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="424.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">-3.40</text>
+<polyline fill="none" stroke="#4fc3f7" stroke-width="2.5" points="60.00,406.62 97.24,406.64 134.48,406.84 171.72,406.32 208.97,406.75 246.21,406.94 283.45,406.62 320.69,406.69 357.93,406.80 395.17,406.45 432.41,407.27 469.66,406.66 506.90,407.04 544.14,406.61 581.38,406.76 618.62,406.95 655.86,406.77 693.10,406.59 730.34,406.69 767.59,406.66 804.83,406.44 842.07,406.90 879.31,406.40 916.55,406.74 953.79,406.99 991.03,406.89 1028.28,406.78 1065.52,406.27 1102.76,406.70 1140.00,406.74"/>
+<polyline fill="none" stroke="#ffca28" stroke-width="2.5" points="60.00,152.73 97.24,163.03 134.48,184.74 171.72,231.70 208.97,222.70 246.21,247.47 283.45,211.19 320.69,254.51 357.93,280.93 395.17,262.86 432.41,307.19 469.66,300.42 506.90,306.63 544.14,287.90 581.38,292.65 618.62,244.28 655.86,278.79 693.10,293.42 730.34,303.29 767.59,260.97 804.83,310.57 842.07,314.91 879.31,272.27 916.55,327.90 953.79,346.15 991.03,345.58 1028.28,356.99 1065.52,321.45 1102.76,293.60 1140.00,304.18"/>
+<polyline fill="none" stroke="#66bb6a" stroke-width="2.5" points="60.00,402.43 97.24,402.43 134.48,402.42 171.72,402.42 208.97,402.41 246.21,402.37 283.45,402.34 320.69,402.29 357.93,402.24 395.17,402.18 432.41,402.08 469.66,401.96 506.90,401.87 544.14,401.83 581.38,401.80 618.62,401.80 655.86,401.80 693.10,401.81 730.34,401.80 767.59,401.83 804.83,401.85 842.07,401.86 879.31,401.87 916.55,401.89 953.79,401.91 991.03,401.94 1028.28,401.99 1065.52,402.03 1102.76,402.08 1140.00,402.11"/>
+<polyline fill="none" stroke="#ef5350" stroke-width="2.5" points="60.00,406.62 97.24,406.63 134.48,406.62 171.72,406.63 208.97,406.57 246.21,406.60 283.45,406.59 320.69,406.47 357.93,406.54 395.17,406.59 432.41,406.60 469.66,406.60 506.90,406.62 544.14,406.60 581.38,406.63 618.62,406.61 655.86,406.61 693.10,406.60 730.34,406.59 767.59,406.58 804.83,406.55 842.07,406.60 879.31,406.56 916.55,406.56 953.79,406.59 991.03,406.59 1028.28,406.49 1065.52,406.58 1102.76,406.59 1140.00,406.60"/>
+<line x1="60.00" y1="140.00" x2="60.00" y2="420.00" stroke="#1a2633" stroke-width="1"/>
+<text x="60.00" y="438.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">1</text>
+<line x1="330.00" y1="140.00" x2="330.00" y2="420.00" stroke="#1a2633" stroke-width="1"/>
+<text x="330.00" y="438.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">8</text>
+<line x1="600.00" y1="140.00" x2="600.00" y2="420.00" stroke="#1a2633" stroke-width="1"/>
+<text x="600.00" y="438.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">16</text>
+<line x1="870.00" y1="140.00" x2="870.00" y2="420.00" stroke="#1a2633" stroke-width="1"/>
+<text x="870.00" y="438.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">23</text>
+<line x1="1140.00" y1="140.00" x2="1140.00" y2="420.00" stroke="#1a2633" stroke-width="1"/>
+<text x="1140.00" y="438.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">30</text>
+<line x1="72.00" y1="158.00" x2="90.00" y2="158.00" stroke="#4fc3f7" stroke-width="3"/>
+<text x="96.00" y="162.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">policy loss</text>
+<line x1="72.00" y1="176.00" x2="90.00" y2="176.00" stroke="#ffca28" stroke-width="3"/>
+<text x="96.00" y="180.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">value loss</text>
+<line x1="72.00" y1="194.00" x2="90.00" y2="194.00" stroke="#66bb6a" stroke-width="3"/>
+<text x="96.00" y="198.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">entropy</text>
+<line x1="72.00" y1="212.00" x2="90.00" y2="212.00" stroke="#ef5350" stroke-width="3"/>
+<text x="96.00" y="216.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">approx kl</text>
+<text x="60" y="470" fill="#dce7f3" font-size="18" font-family="DejaVu Sans, sans-serif">Control performance</text>
+<rect x="60.00" y="490.00" width="1080.00" height="280.00" fill="#101924" stroke="#314154" stroke-width="1"/>
+<text x="60.00" y="476.00" fill="#dce7f3" font-size="18" font-family="DejaVu Sans, sans-serif"></text>
+<line x1="60.00" y1="490.00" x2="1140.00" y2="490.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="494.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">210.80</text>
+<line x1="60.00" y1="560.00" x2="1140.00" y2="560.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="564.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">155.78</text>
+<line x1="60.00" y1="630.00" x2="1140.00" y2="630.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="634.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">100.75</text>
+<line x1="60.00" y1="700.00" x2="1140.00" y2="700.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="704.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">45.73</text>
+<line x1="60.00" y1="770.00" x2="1140.00" y2="770.00" stroke="#223041" stroke-width="1"/>
+<text x="50.00" y="774.00" text-anchor="end" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">-9.30</text>
+<polyline fill="none" stroke="#42a5f5" stroke-width="2.5" points="60.00,707.62 97.24,695.71 134.48,691.14 171.72,696.04 208.97,705.94 246.21,703.99 283.45,684.37 320.69,702.72 357.93,689.22 395.17,693.60 432.41,701.50 469.66,708.31 506.90,707.25 544.14,683.06 581.38,679.99 618.62,656.44 655.86,657.06 693.10,647.67 730.34,638.01 767.59,649.29 804.83,621.02 842.07,615.15 879.31,636.25 916.55,618.66 953.79,599.70 991.03,582.61 1028.28,593.26 1065.52,600.38 1102.76,588.76 1140.00,578.62"/>
+<polyline fill="none" stroke="#ab47bc" stroke-width="2.5" points="60.00,756.90 97.24,756.90 134.48,756.90 171.72,756.90 208.97,756.90 246.21,756.90 283.45,756.90 320.69,756.90 357.93,756.90 395.17,756.90 432.41,756.90 469.66,756.90 506.90,756.90 544.14,756.90 581.38,756.90 618.62,756.90 655.86,756.90 693.10,756.90 730.34,756.90 767.59,756.90 804.83,756.90 842.07,756.90 879.31,756.90 916.55,756.90 953.79,756.90 991.03,756.90 1028.28,756.90 1065.52,756.90 1102.76,756.90 1140.00,756.90"/>
+<polyline fill="none" stroke="#ffa726" stroke-width="2.5" points="60.00,701.12 97.24,686.87 134.48,682.03 171.72,686.49 208.97,699.02 246.21,696.28 283.45,673.96 320.69,691.45 357.93,664.16 395.17,674.97 432.41,680.44 469.66,686.74 506.90,688.01 544.14,666.58 581.38,652.97 618.62,630.39 655.86,630.45 693.10,614.17 730.34,605.71 767.59,614.61 804.83,583.64 842.07,579.56 879.31,598.71 916.55,578.10 953.79,557.17 991.03,533.70 1028.28,542.99 1065.52,542.80 1102.76,524.23 1140.00,502.73"/>
+<polyline fill="none" stroke="#26a69a" stroke-width="2.5" points="60.00,757.27 97.24,757.27 134.48,757.27 171.72,757.27 208.97,757.27 246.21,757.26 283.45,757.25 320.69,757.24 357.93,757.23 395.17,757.21 432.41,757.19 469.66,757.16 506.90,757.13 544.14,757.12 581.38,757.12 618.62,757.12 655.86,757.12 693.10,757.12 730.34,757.12 767.59,757.12 804.83,757.13 842.07,757.13 879.31,757.13 916.55,757.14 953.79,757.14 991.03,757.15 1028.28,757.17 1065.52,757.18 1102.76,757.19 1140.00,757.20"/>
+<line x1="60.00" y1="490.00" x2="60.00" y2="770.00" stroke="#1a2633" stroke-width="1"/>
+<text x="60.00" y="788.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">1</text>
+<line x1="330.00" y1="490.00" x2="330.00" y2="770.00" stroke="#1a2633" stroke-width="1"/>
+<text x="330.00" y="788.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">8</text>
+<line x1="600.00" y1="490.00" x2="600.00" y2="770.00" stroke="#1a2633" stroke-width="1"/>
+<text x="600.00" y="788.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">16</text>
+<line x1="870.00" y1="490.00" x2="870.00" y2="770.00" stroke="#1a2633" stroke-width="1"/>
+<text x="870.00" y="788.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">23</text>
+<line x1="1140.00" y1="490.00" x2="1140.00" y2="770.00" stroke="#1a2633" stroke-width="1"/>
+<text x="1140.00" y="788.00" text-anchor="middle" fill="#93a8bf" font-size="11" font-family="DejaVu Sans, sans-serif">30</text>
+<line x1="72.00" y1="508.00" x2="90.00" y2="508.00" stroke="#42a5f5" stroke-width="3"/>
+<text x="96.00" y="512.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">avg episode return</text>
+<line x1="72.00" y1="526.00" x2="90.00" y2="526.00" stroke="#ab47bc" stroke-width="3"/>
+<text x="96.00" y="530.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">success rate</text>
+<line x1="72.00" y1="544.00" x2="90.00" y2="544.00" stroke="#ffa726" stroke-width="3"/>
+<text x="96.00" y="548.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">avg episode length</text>
+<line x1="72.00" y1="562.00" x2="90.00" y2="562.00" stroke="#26a69a" stroke-width="3"/>
+<text x="96.00" y="566.00" fill="#dce7f3" font-size="12" font-family="DejaVu Sans, sans-serif">action std</text>
+</svg>
