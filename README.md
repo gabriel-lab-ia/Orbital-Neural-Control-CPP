@@ -1,4 +1,4 @@
-##Neuro Motor CPP
+Neuro Motor CPP
 
 `Neuro Motor CPP` is a C++20 reinforcement learning project that combines:
 
