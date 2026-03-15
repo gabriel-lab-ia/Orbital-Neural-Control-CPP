@@ -1,0 +1,43 @@
+<svg width="1200" height="460" viewBox="0 0 1200 460" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PPO engine banner</title>
+  <desc id="desc">Visual banner for PPO training, rollouts, GAE, and optimization.</desc>
+  <defs>
+    <linearGradient id="bg" x1="100" y1="40" x2="1080" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1522"/>
+      <stop offset="0.5" stop-color="#13263A"/>
+      <stop offset="1" stop-color="#0A1018"/>
+    </linearGradient>
+    <linearGradient id="line" x1="140" y1="240" x2="1050" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5CB8FF"/>
+      <stop offset="1" stop-color="#73F2C2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="460" rx="28" fill="url(#bg)"/>
+  <circle cx="220" cy="120" r="120" fill="#5CB8FF" opacity="0.10"/>
+  <circle cx="952" cy="346" r="140" fill="#73F2C2" opacity="0.10"/>
+
+  <text x="74" y="98" fill="#74F2C2" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="2">TRAINING ENGINE</text>
+  <text x="74" y="154" fill="#F4FAFF" font-family="DejaVu Sans, Arial, sans-serif" font-size="44" font-weight="700">PPO, rollouts, and optimization in modern C++</text>
+  <text x="74" y="198" fill="#A9C4D8" font-family="DejaVu Sans, Arial, sans-serif" font-size="24">Generalized advantage estimation, clipped policy updates, entropy regularization,</text>
+  <text x="74" y="230" fill="#A9C4D8" font-family="DejaVu Sans, Arial, sans-serif" font-size="24">and benchmark-oriented inference paths implemented on top of LibTorch.</text>
+
+  <path d="M134 304H1032" stroke="url(#line)" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+  <g fill="#0F2030" stroke="rgba(255,255,255,0.10)">
+    <rect x="150" y="274" width="170" height="62" rx="18"/>
+    <rect x="364" y="274" width="170" height="62" rx="18"/>
+    <rect x="578" y="274" width="170" height="62" rx="18"/>
+    <rect x="792" y="274" width="220" height="62" rx="18"/>
+  </g>
+  <text x="184" y="313" fill="#E6F3FF" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700">collect rollouts</text>
+  <text x="425" y="313" fill="#E6F3FF" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700">estimate returns</text>
+  <text x="633" y="313" fill="#E6F3FF" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700">optimize PPO</text>
+  <text x="841" y="313" fill="#E6F3FF" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700">export metrics and benchmarks</text>
+
+  <g fill="#5CB8FF">
+    <circle cx="184" cy="305" r="7"/>
+    <circle cx="398" cy="305" r="7"/>
+    <circle cx="612" cy="305" r="7"/>
+    <circle cx="826" cy="305" r="7"/>
+  </g>
+</svg>
