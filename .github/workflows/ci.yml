@@ -20,6 +20,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip wget curl libsqlite3-dev
 
+      - name: Setup CMake + Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.28.0"
+          ninjaVersion: "latest"
+
       - name: Cache LibTorch CPU
         uses: actions/cache@v4
         with:
@@ -36,6 +42,7 @@ jobs:
         run: |
           set -euxo pipefail
           cmake --version
+          ninja --version
           cmake --preset dev \
             -DNMC_TORCH_ROOT="$GITHUB_WORKSPACE/lib/libtorch" \
             -DNMC_ENABLE_MUJOCO=OFF
