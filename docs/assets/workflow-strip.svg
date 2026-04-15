@@ -1,0 +1,62 @@
+<svg width="1600" height="300" viewBox="0 0 1600 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Experiment workflow strip</title>
+  <desc id="desc">Build train evaluate persist benchmark inspect pipeline for reproducible reinforcement learning experiments.</desc>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="30" x2="1510" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07101A"/>
+      <stop offset="1" stop-color="#09131E"/>
+    </linearGradient>
+    <linearGradient id="step" x1="150" y1="150" x2="1450" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4AA3FF"/>
+      <stop offset="1" stop-color="#39DFA6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="300" rx="24" fill="url(#bg)"/>
+  <text x="120" y="52" fill="#96B2D0" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">ENGINEERING LIFECYCLE</text>
+  <path d="M120 166H1480" stroke="url(#step)" stroke-width="3" stroke-linecap="round"/>
+
+  <g font-family="DejaVu Sans, Arial, sans-serif" text-anchor="middle">
+    <g>
+      <rect x="106" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="196" cy="166" r="8" fill="#4AA3FF"/>
+      <text x="196" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Build</text>
+      <text x="196" y="194" fill="#A8C0DC" font-size="16">CMake + C++20</text>
+    </g>
+
+    <g>
+      <rect x="332" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="422" cy="166" r="8" fill="#4AA3FF"/>
+      <text x="422" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Train</text>
+      <text x="422" y="194" fill="#A8C0DC" font-size="16">PPO updates</text>
+    </g>
+
+    <g>
+      <rect x="558" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="648" cy="166" r="8" fill="#4AA3FF"/>
+      <text x="648" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Evaluate</text>
+      <text x="648" y="194" fill="#A8C0DC" font-size="16">policy checkpoints</text>
+    </g>
+
+    <g>
+      <rect x="784" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="874" cy="166" r="8" fill="#3BDEA6"/>
+      <text x="874" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Persist</text>
+      <text x="874" y="194" fill="#A8C0DC" font-size="16">SQLite + manifests</text>
+    </g>
+
+    <g>
+      <rect x="1010" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="1100" cy="166" r="8" fill="#3BDEA6"/>
+      <text x="1100" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Benchmark</text>
+      <text x="1100" y="194" fill="#A8C0DC" font-size="16">smoke + reports</text>
+    </g>
+
+    <g>
+      <rect x="1236" y="112" width="180" height="108" rx="16" fill="#0B1726" stroke="#274059"/>
+      <circle cx="1326" cy="166" r="8" fill="#3BDEA6"/>
+      <text x="1326" y="146" fill="#EAF4FF" font-size="22" font-weight="700">Inspect</text>
+      <text x="1326" y="194" fill="#A8C0DC" font-size="16">CI + artifact checks</text>
+    </g>
+  </g>
+</svg>

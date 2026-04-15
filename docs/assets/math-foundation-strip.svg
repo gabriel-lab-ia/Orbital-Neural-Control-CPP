@@ -1,0 +1,24 @@
+<svg width="1600" height="360" viewBox="0 0 1600 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Mathematical foundation strip</title>
+  <desc id="desc">PPO mathematical objective with actor critic decomposition and generalized advantage estimation references.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="30" x2="1480" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111A"/>
+      <stop offset="1" stop-color="#0A1420"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="360" rx="24" fill="url(#bg)"/>
+  <text x="120" y="58" fill="#8FAED0" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">MATHEMATICAL FOUNDATION</text>
+
+  <rect x="120" y="86" width="1360" height="236" rx="18" fill="#0A1726" stroke="#253B52"/>
+
+  <text x="152" y="134" fill="#EAF4FF" font-family="DejaVu Sans Mono, Consolas, monospace" font-size="25">L<tspan baseline-shift="sub" font-size="16">clip</tspan>(theta) = E<tspan baseline-shift="sub" font-size="16">t</tspan>[ min(r<tspan baseline-shift="sub" font-size="16">t</tspan>(theta) A<tspan baseline-shift="sub" font-size="16">t</tspan>, clip(r<tspan baseline-shift="sub" font-size="16">t</tspan>(theta), 1-epsilon, 1+epsilon) A<tspan baseline-shift="sub" font-size="16">t</tspan>) ]</text>
+
+  <text x="152" y="178" fill="#AFC5DE" font-family="DejaVu Sans, Arial, sans-serif" font-size="22">r<tspan baseline-shift="sub" font-size="14">t</tspan>(theta) = pi<tspan baseline-shift="sub" font-size="14">theta</tspan>(a<tspan baseline-shift="sub" font-size="14">t</tspan>|s<tspan baseline-shift="sub" font-size="14">t</tspan>) / pi<tspan baseline-shift="sub" font-size="14">theta_old</tspan>(a<tspan baseline-shift="sub" font-size="14">t</tspan>|s<tspan baseline-shift="sub" font-size="14">t</tspan>)</text>
+
+  <text x="152" y="214" fill="#AFC5DE" font-family="DejaVu Sans, Arial, sans-serif" font-size="22">A<tspan baseline-shift="sub" font-size="14">t</tspan> via GAE(lambda), V<tspan baseline-shift="sub" font-size="14">phi</tspan>(s) for critic targets, entropy bonus for exploration stability</text>
+
+  <text x="152" y="252" fill="#7FDDB2" font-family="DejaVu Sans, Arial, sans-serif" font-size="20">optimization target: maximize stable policy improvement under bounded update ratios</text>
+  <text x="152" y="284" fill="#7FDDB2" font-family="DejaVu Sans, Arial, sans-serif" font-size="20">continuous control policy: Gaussian action distribution with learned mean and log standard deviation</text>
+</svg>

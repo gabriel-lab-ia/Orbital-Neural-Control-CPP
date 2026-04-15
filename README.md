@@ -1,44 +1,64 @@
 # PPO Neural Control C++
 
-A disciplined C++20 reinforcement learning systems baseline for PPO.
+<p align="center">
+  <img src="docs/assets/hero-systems-banner.svg" alt="PPO Neural Control C++ systems hero" width="100%" />
+</p>
 
-This repository is now organized as a CPU-first, reproducible RL project with clear boundaries between domain logic, application orchestration, infrastructure, and interfaces. It keeps optional MuJoCo support and prepares a future inference backend path (TensorRT) without enabling it yet.
+**C++20 reinforcement learning systems foundation for policy optimization, reproducible experimentation, and extensible continuous-control simulation.**
 
-## What it is now
+CPU-first baseline with PPO + LibTorch, SQLite experiment tracking, benchmarkable train/eval flows, and a clean architecture prepared for future advanced autonomy domains.
 
-- PPO training baseline in modern C++20 + LibTorch (CPU).
-- Explicit `train`, `eval`, and `benchmark` operational flows.
-- Reproducible run artifacts with per-run manifests.
-- Local SQLite experiment tracking and telemetry.
-- CI smoke benchmark that compiles and validates generated artifacts.
+## Core Stack
 
-## What it is not (yet)
+<p align="center">
+  <a href="https://en.cppreference.com/w/cpp/20"><img src="https://img.shields.io/badge/C%2B%2B-20-0F6CAD.svg" alt="C++20" /></a>
+  <img src="https://img.shields.io/badge/Platform-Linux-1D3A52.svg" alt="Linux" />
+  <img src="https://img.shields.io/badge/RL-PPO-1C7ED6.svg" alt="PPO" />
+  <img src="https://img.shields.io/badge/Backend-LibTorch%20CPU-1B5E20.svg" alt="LibTorch CPU" />
+  <img src="https://img.shields.io/badge/Tracking-SQLite-0B7285.svg" alt="SQLite" />
+</p>
 
-- No active CUDA path.
-- No active TensorRT runtime integration.
-- No full orbital dynamics domain migration yet.
+<p align="center">
+  <img src="https://img.shields.io/badge/Workflow-Benchmarking-364FC7.svg" alt="Benchmarking" />
+  <img src="https://img.shields.io/badge/Workflow-Experiment%20Tracking-1971C2.svg" alt="Experiment Tracking" />
+  <img src="https://img.shields.io/badge/Domain-Continuous%20Control-2B8A3E.svg" alt="Continuous Control" />
+  <img src="https://img.shields.io/badge/Simulation-Extensible%20Environment%20API-1864AB.svg" alt="Simulation API" />
+  <img src="https://img.shields.io/badge/Engineering-Reproducible-0B7285.svg" alt="Reproducibility" />
+</p>
 
-## Architecture
+<p align="center">
+  <a href="https://github.com/gabriel-lab-ia/PPO_Neural-Control-cpp/actions/workflows/ci.yml"><img src="https://github.com/gabriel-lab-ia/PPO_Neural-Control-cpp/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/CI-Smoke%20Benchmark-2B8A3E.svg" alt="CI smoke benchmark" />
+  <img src="https://img.shields.io/badge/Optional-MuJoCo-495057.svg" alt="MuJoCo optional" />
+  <img src="https://img.shields.io/badge/Future-TensorRT%20Backend%20Path-495057.svg" alt="TensorRT future" />
+</p>
 
-Source layout:
+<p align="center">
+  <img src="docs/assets/capabilities-strip.svg" alt="System capabilities" width="100%" />
+</p>
 
-- `src/domain/`
-  - `config/`: explicit train/eval/benchmark configuration models.
-  - `env/`: `Environment` interface + concrete envs (`point_mass`, optional `mujoco_cartpole`).
-  - `ppo/`: policy/value model, rollout types, PPO trainer.
-  - `inference/`: inference backend interface + LibTorch backend + TensorRT stub.
-- `src/application/`
-  - training/evaluation/benchmark runners.
-- `src/infrastructure/`
-  - artifact layout + checkpoint management.
-  - SQLite persistence (`runs`, `episodes`, `events`, `benchmarks`).
-  - CSV/live rollout reporting.
-- `src/interfaces/`
-  - CLI and entrypoint.
-- `src/common/`
-  - shared utilities.
+## Why This Repository Exists
 
-Detailed docs and UML:
+Most RL repositories optimize for quick experimentation. This repository optimizes for **engineering discipline in RL systems**:
+
+- clear boundaries between domain logic, orchestration, infrastructure, and interfaces
+- reproducible train/eval/benchmark lifecycle
+- structured artifact outputs and local experiment traceability
+- CPU-first operational baseline suitable for continuous CI validation
+
+The result is a maintainable C++20 PPO foundation that can evolve into more demanding control and autonomy domains without architectural resets.
+
+## Systems Overview
+
+The codebase is intentionally layered:
+
+- `src/domain/`: PPO math/logic, environment contracts, inference backend interfaces
+- `src/application/`: train/eval/benchmark runners
+- `src/infrastructure/`: artifacts, checkpoints, SQLite persistence, reporting
+- `src/interfaces/`: CLI entrypoint and command surface
+- `src/common/`: cross-cutting utilities
+
+Detailed engineering docs:
 
 - `docs/architecture.md`
 - `docs/uml/component-diagram.md`
@@ -46,61 +66,50 @@ Detailed docs and UML:
 - `docs/uml/sequence-training.md`
 - `docs/roadmap.md`
 
-## Requirements
+## Mathematical Foundation
 
-- CMake 3.24+
-- C++20 compiler (GCC 13+ recommended)
-- LibTorch CPU (default helper script provided)
-- SQLite runtime library (`libsqlite3`)
-- Optional MuJoCo for `mujoco_cartpole`
+<p align="center">
+  <img src="docs/assets/math-foundation-strip.svg" alt="PPO mathematical foundation" width="100%" />
+</p>
 
-## Setup
+This project implements an actor-critic PPO training loop for continuous control with clipped policy updates and generalized advantage estimation.
 
-Install LibTorch CPU locally (if `lib/libtorch` is missing):
+**Clipped PPO objective**
 
-```bash
-bash tools/setup_libtorch_cpu.sh
-```
+\[
+L^{\text{clip}}(\theta)=\mathbb{E}_t\left[\min\left(r_t(\theta)\hat{A}_t,\ \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t\right)\right]
+\]
 
-Configure and build:
+with
 
-```bash
-cmake --preset dev
-cmake --build --preset build
-```
+\[
+r_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)}
+\]
 
-## CLI commands
+**Value and advantage path**
 
-### Train
+- critic learns \(V_\phi(s_t)\) targets
+- advantages are estimated with GAE(\(\lambda\)) for lower-variance policy gradients
+- entropy regularization supports exploration stability
+
+**Continuous action policy**
+
+- stochastic Gaussian policy with learned mean and log standard deviation
+- clipped updates + value stabilization + entropy control improve optimization robustness
+
+This is not only “RL code”; it is an implementation of stable stochastic policy optimization under repeatable engineering constraints.
+
+## Architecture and Execution Flow
+
+<p align="center">
+  <img src="docs/assets/workflow-strip.svg" alt="Build train evaluate persist benchmark inspect lifecycle" width="100%" />
+</p>
+
+Primary commands:
 
 ```bash
 ./build/nmc train --env point_mass --seed 7 --updates 30
-```
-
-Example with explicit hyperparameters:
-
-```bash
-./build/nmc train \
-  --env point_mass \
-  --seed 7 \
-  --num-envs 16 \
-  --updates 30 \
-  --rollout-steps 128 \
-  --ppo-epochs 5 \
-  --minibatch-size 192 \
-  --hidden-dim 96 \
-  --learning-rate 0.0003
-```
-
-### Evaluate
-
-```bash
 ./build/nmc eval --checkpoint artifacts/latest/checkpoint.pt --episodes 10 --backend libtorch
-```
-
-### Smoke benchmark
-
-```bash
 ./build/nmc benchmark --quick --name smoke
 ```
 
@@ -112,9 +121,9 @@ Script aliases:
 ./scripts/benchmark_smoke.sh
 ```
 
-## Artifact layout
+## Reproducible Experiment Pipeline
 
-Generated under `artifacts/`:
+Artifacts are organized under:
 
 ```text
 artifacts/
@@ -134,53 +143,51 @@ artifacts/
   experiments.sqlite
 ```
 
-Each run writes structured metadata (`manifest.json`) and summary outputs.
+Each run includes structured metadata for traceability and automation.
 
-## SQLite tracking
+## SQLite Experiment Tracking
 
-Database: `artifacts/experiments.sqlite`
+`artifacts/experiments.sqlite` captures:
 
-Tables:
+- `runs`: run configuration, lifecycle, summary
+- `episodes`: train/eval episode telemetry
+- `events`: run-level operational events
+- `benchmarks`: benchmark summaries
 
-- `runs`: mode, status, config JSON, summary JSON.
-- `episodes`: episode-level telemetry for train/eval.
-- `events`: run lifecycle and important events.
-- `benchmarks`: benchmark summary records.
+This gives local-first observability without introducing heavyweight external infrastructure.
 
-## MuJoCo (optional)
+## CI and Engineering Validation
 
-Enable and build with MuJoCo:
+The CI workflow (`.github/workflows/ci.yml`) performs:
+
+1. deterministic baseline configure/build (CPU-first)
+2. smoke benchmark execution through CTest
+3. generated artifact validation (`benchmark`, `manifest`, `checkpoint`)
+
+This repository treats CI as part of the product surface, not an afterthought.
+
+## Build and Dependencies
+
+Requirements:
+
+- CMake 3.24+
+- C++20 compiler (GCC 13+ recommended)
+- LibTorch CPU
+- SQLite runtime (`libsqlite3`)
+- optional MuJoCo for `mujoco_cartpole`
+
+Bootstrap:
 
 ```bash
-cmake --preset dev -DNMC_ENABLE_MUJOCO=ON -DNMC_MUJOCO_ROOT=$HOME/.local/mujoco-3.2.6
+bash tools/setup_libtorch_cpu.sh
+cmake --preset dev
 cmake --build --preset build
 ```
 
-Run with MuJoCo environment:
+## Optional Features and Future Direction
 
-```bash
-./build/nmc train --env mujoco_cartpole
-```
+- **MuJoCo** is optional and guarded behind `NMC_ENABLE_MUJOCO`.
+- **TensorRT** is intentionally not active in baseline; backend abstraction exists for future integration.
+- **CUDA** is not required in the current project path.
 
-## Future TensorRT direction
-
-The inference abstraction (`domain/inference/PolicyInferenceBackend`) is already in place.
-
-- Active now: `LibTorchPolicyBackend`.
-- Placeholder: `TensorRtPolicyBackendStub`.
-
-This keeps today’s setup simple and CPU-first while preserving a clean extension point for future TensorRT inference.
-
-## CI
-
-GitHub Actions pipeline (`.github/workflows/ci.yml`) performs:
-
-1. Configure and build.
-2. Run smoke benchmark (`ctest -R nmc_smoke_benchmark`).
-3. Validate critical artifact outputs exist.
-
-## Orbital/satellite direction
-
-The long-term target remains autonomous orbital/satellite control.
-
-This refactor intentionally focuses on reusable RL systems foundations so new environments (e.g., orbital dynamics) can be plugged into `domain/env` without rewriting the PPO core.
+Long-term direction: evolve from this RL systems foundation toward advanced autonomous control domains (including orbital/satellite control environments) through environment and simulation expansion, while preserving PPO core discipline.

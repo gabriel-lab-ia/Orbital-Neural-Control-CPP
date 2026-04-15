@@ -1,0 +1,89 @@
+<svg width="1600" height="560" viewBox="0 0 1600 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PPO Neural Control systems hero</title>
+  <desc id="desc">Dark technical banner showing C plus plus reinforcement learning systems architecture, telemetry, and reproducible experiment operations.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="40" x2="1500" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#060D16"/>
+      <stop offset="0.5" stop-color="#0B1625"/>
+      <stop offset="1" stop-color="#070B12"/>
+    </linearGradient>
+    <linearGradient id="lineA" x1="128" y1="436" x2="1030" y2="436" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2C7DFF"/>
+      <stop offset="1" stop-color="#3CE6A8"/>
+    </linearGradient>
+    <linearGradient id="lineB" x1="1124" y1="130" x2="1480" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4AA3FF"/>
+      <stop offset="1" stop-color="#36DFA4"/>
+    </linearGradient>
+    <linearGradient id="card" x1="1120" y1="92" x2="1492" y2="408" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#121E2E"/>
+      <stop offset="1" stop-color="#0B1522"/>
+    </linearGradient>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(248 116) rotate(90) scale(200)">
+      <stop stop-color="#2D77FF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#2D77FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowGreen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1388 426) rotate(90) scale(220)">
+      <stop stop-color="#35DFA3" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#35DFA3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="560" rx="30" fill="url(#bg)"/>
+  <circle cx="248" cy="116" r="200" fill="url(#glowBlue)"/>
+  <circle cx="1388" cy="426" r="220" fill="url(#glowGreen)"/>
+
+  <g opacity="0.28" stroke="#203349" stroke-width="1">
+    <path d="M80 480H1520"/>
+    <path d="M80 432H1520"/>
+    <path d="M80 384H1520"/>
+    <path d="M80 336H1520"/>
+    <path d="M80 288H1520"/>
+    <path d="M80 240H1520"/>
+    <path d="M80 192H1520"/>
+    <path d="M80 144H1520"/>
+    <path d="M80 96H1520"/>
+  </g>
+
+  <text x="86" y="120" fill="#3ADAA3" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="2">C++20 RL SYSTEMS FOUNDATION</text>
+  <text x="86" y="206" fill="#EEF6FF" font-family="DejaVu Sans, Arial, sans-serif" font-size="58" font-weight="700">PPO Neural Control C++</text>
+  <text x="86" y="266" fill="#B9CBE0" font-family="DejaVu Sans, Arial, sans-serif" font-size="28">Policy optimization, reproducible benchmarking, and experiment telemetry</text>
+  <text x="86" y="306" fill="#93AACA" font-family="DejaVu Sans, Arial, sans-serif" font-size="24">LibTorch CPU backend, SQLite tracking, layered architecture, and extensible simulation interfaces.</text>
+
+  <g>
+    <path d="M130 452C216 392 296 358 382 364C498 372 570 456 684 456C790 456 856 384 950 340C982 326 1010 312 1032 300" stroke="url(#lineA)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="382" cy="364" r="8" fill="#4AA3FF"/>
+    <circle cx="684" cy="456" r="8" fill="#3BE2A5"/>
+    <circle cx="950" cy="340" r="8" fill="#4AA3FF"/>
+  </g>
+
+  <g>
+    <rect x="1110" y="84" width="406" height="334" rx="24" fill="url(#card)" stroke="#1F3146"/>
+    <text x="1140" y="126" fill="#DDEBFA" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700">Operational stack</text>
+
+    <rect x="1140" y="148" width="346" height="52" rx="14" fill="#0A1320" stroke="#24394F"/>
+    <text x="1162" y="181" fill="#BFD3EA" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">train / eval / benchmark CLI</text>
+
+    <rect x="1140" y="214" width="346" height="52" rx="14" fill="#0A1320" stroke="#24394F"/>
+    <text x="1162" y="247" fill="#BFD3EA" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">PPO trainer + actor critic model</text>
+
+    <rect x="1140" y="280" width="346" height="52" rx="14" fill="#0A1320" stroke="#24394F"/>
+    <text x="1162" y="313" fill="#BFD3EA" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">artifacts + run manifests</text>
+
+    <rect x="1140" y="346" width="346" height="52" rx="14" fill="#0A1320" stroke="#24394F"/>
+    <text x="1162" y="379" fill="#BFD3EA" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">SQLite runs / episodes / benchmarks</text>
+
+    <path d="M1128 330C1180 292 1238 250 1308 236C1369 224 1424 240 1476 280" stroke="url(#lineB)" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+  </g>
+
+  <g>
+    <rect x="86" y="344" width="186" height="48" rx="24" fill="#0E1A2A" stroke="#2A3F56"/>
+    <rect x="286" y="344" width="168" height="48" rx="24" fill="#0E1A2A" stroke="#2A3F56"/>
+    <rect x="468" y="344" width="160" height="48" rx="24" fill="#0E1A2A" stroke="#2A3F56"/>
+    <rect x="642" y="344" width="176" height="48" rx="24" fill="#0E1A2A" stroke="#2A3F56"/>
+    <text x="126" y="374" fill="#DCEAF9" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="700">PPO + GAE</text>
+    <text x="328" y="374" fill="#DCEAF9" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="700">LibTorch</text>
+    <text x="512" y="374" fill="#DCEAF9" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="700">SQLite</text>
+    <text x="682" y="374" fill="#DCEAF9" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="700">Benchmarking</text>
+  </g>
+</svg>
