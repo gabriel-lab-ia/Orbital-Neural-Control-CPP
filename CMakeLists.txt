@@ -54,6 +54,13 @@ if(NOT NMC_SQLITE3_LIBRARY)
     message(FATAL_ERROR "SQLite3 runtime library not found.")
 endif()
 
+message(STATUS "NMC build configuration")
+message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  NMC_TORCH_ROOT: ${NMC_TORCH_ROOT}")
+message(STATUS "  NMC_EIGEN_ROOT: ${NMC_EIGEN_ROOT}")
+message(STATUS "  NMC_ENABLE_MUJOCO: ${NMC_ENABLE_MUJOCO}")
+message(STATUS "  SQLite library: ${NMC_SQLITE3_LIBRARY}")
+
 set(NMC_SOURCES
     src/common/json_utils.cpp
     src/common/time_utils.cpp
