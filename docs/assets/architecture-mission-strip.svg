@@ -1,0 +1,47 @@
+<svg width="1600" height="300" viewBox="0 0 1600 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture strip</title>
+  <desc id="desc">Layered software architecture for orbital reinforcement learning platform.</desc>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="20" x2="1510" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07101A"/>
+      <stop offset="1" stop-color="#0A1420"/>
+    </linearGradient>
+    <linearGradient id="flow" x1="140" y1="148" x2="1456" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4CA4FF"/>
+      <stop offset="1" stop-color="#39DFA5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="300" rx="24" fill="url(#bg)"/>
+  <text x="120" y="48" fill="#93B0CF" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">LAYERED SYSTEM ARCHITECTURE</text>
+  <path d="M120 148H1480" stroke="url(#flow)" stroke-width="3" stroke-linecap="round"/>
+
+  <g font-family="DejaVu Sans, Arial, sans-serif" text-anchor="middle">
+    <rect x="120" y="92" width="250" height="116" rx="16" fill="#0B1725" stroke="#294159"/>
+    <text x="245" y="128" fill="#EAF4FF" font-size="23" font-weight="700">interfaces</text>
+    <text x="245" y="160" fill="#A4C0DB" font-size="17">CLI and entrypoints</text>
+    <text x="245" y="184" fill="#A4C0DB" font-size="17">operator surface</text>
+
+    <rect x="390" y="92" width="250" height="116" rx="16" fill="#0B1725" stroke="#294159"/>
+    <text x="515" y="128" fill="#EAF4FF" font-size="23" font-weight="700">application</text>
+    <text x="515" y="160" fill="#A4C0DB" font-size="17">train / eval / benchmark</text>
+    <text x="515" y="184" fill="#A4C0DB" font-size="17">orchestration</text>
+
+    <rect x="660" y="92" width="250" height="116" rx="16" fill="#0B1725" stroke="#294159"/>
+    <text x="785" y="128" fill="#EAF4FF" font-size="23" font-weight="700">domain</text>
+    <text x="785" y="160" fill="#A4C0DB" font-size="17">PPO + env contracts</text>
+    <text x="785" y="184" fill="#A4C0DB" font-size="17">control logic</text>
+
+    <rect x="930" y="92" width="250" height="116" rx="16" fill="#0B1725" stroke="#294159"/>
+    <text x="1055" y="128" fill="#EAF4FF" font-size="23" font-weight="700">infrastructure</text>
+    <text x="1055" y="160" fill="#A4C0DB" font-size="17">artifacts + SQLite</text>
+    <text x="1055" y="184" fill="#A4C0DB" font-size="17">persistence/reporting</text>
+
+    <rect x="1200" y="92" width="280" height="116" rx="16" fill="#0B1725" stroke="#294159"/>
+    <text x="1340" y="128" fill="#EAF4FF" font-size="23" font-weight="700">future control domains</text>
+    <text x="1340" y="160" fill="#A4C0DB" font-size="17">orbital mission envs</text>
+    <text x="1340" y="184" fill="#A4C0DB" font-size="17">advanced autonomy tasks</text>
+  </g>
+
+  <text x="120" y="250" fill="#7FA2C8" font-family="DejaVu Sans, Arial, sans-serif" font-size="17">UML documentation: component, class, and training sequence diagrams are maintained under docs/uml.</text>
+</svg>

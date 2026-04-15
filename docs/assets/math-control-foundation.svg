@@ -1,0 +1,24 @@
+<svg width="1600" height="350" viewBox="0 0 1600 350" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Math and control foundation</title>
+  <desc id="desc">Readable mathematical foundation for PPO actor critic control in continuous action spaces.</desc>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="20" x2="1510" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111A"/>
+      <stop offset="1" stop-color="#0A1420"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="350" rx="24" fill="url(#bg)"/>
+  <text x="120" y="52" fill="#91AFD1" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">PPO CONTROL OPTIMIZATION FOUNDATION</text>
+
+  <rect x="120" y="76" width="1360" height="244" rx="18" fill="#0A1725" stroke="#294059"/>
+
+  <text x="150" y="126" fill="#EAF4FF" font-family="DejaVu Sans Mono, Consolas, monospace" font-size="25">L_clip(theta) = E_t[ min( r_t(theta) A_t, clip(r_t(theta), 1-epsilon, 1+epsilon) A_t ) ]</text>
+  <text x="150" y="168" fill="#AFC6DE" font-family="DejaVu Sans Mono, Consolas, monospace" font-size="21">r_t(theta) = pi_theta(a_t | s_t) / pi_theta_old(a_t | s_t)</text>
+
+  <text x="150" y="210" fill="#8FDEB7" font-family="DejaVu Sans, Arial, sans-serif" font-size="21">Actor-critic decomposition: policy head controls action distribution, value head stabilizes return targets.</text>
+  <text x="150" y="240" fill="#8FDEB7" font-family="DejaVu Sans, Arial, sans-serif" font-size="21">GAE(lambda): lower-variance advantages for smoother policy updates in continuous control regimes.</text>
+  <text x="150" y="270" fill="#8FDEB7" font-family="DejaVu Sans, Arial, sans-serif" font-size="21">Entropy term + clipping constraints: exploration support while bounding destabilizing policy shifts.</text>
+
+  <text x="150" y="300" fill="#9AB6D4" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">Control objective alignment: maximize mission-relevant reward under stable stochastic policy improvement.</text>
+</svg>

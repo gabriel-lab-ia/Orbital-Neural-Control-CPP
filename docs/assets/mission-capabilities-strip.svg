@@ -1,0 +1,63 @@
+<svg width="1600" height="320" viewBox="0 0 1600 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Mission capabilities strip</title>
+  <desc id="desc">Core mission and engineering capabilities for orbital reinforcement learning systems.</desc>
+  <defs>
+    <linearGradient id="bg" x1="100" y1="20" x2="1500" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111A"/>
+      <stop offset="1" stop-color="#0A1420"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="320" rx="24" fill="url(#bg)"/>
+  <text x="120" y="46" fill="#8FB1D3" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">CORE CAPABILITIES</text>
+
+  <g font-family="DejaVu Sans, Arial, sans-serif">
+    <rect x="120" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="140" y="112" fill="#EAF4FF" font-size="20" font-weight="700">Orbital Simulation</text>
+    <text x="140" y="138" fill="#9FBAD8" font-size="15">environment API ready</text>
+
+    <rect x="322" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="342" y="112" fill="#EAF4FF" font-size="20" font-weight="700">Autonomous Control</text>
+    <text x="342" y="138" fill="#9FBAD8" font-size="15">continuous action policy</text>
+
+    <rect x="524" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="544" y="112" fill="#EAF4FF" font-size="20" font-weight="700">PPO Training</text>
+    <text x="544" y="138" fill="#9FBAD8" font-size="15">clipped updates + GAE</text>
+
+    <rect x="726" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="746" y="112" fill="#EAF4FF" font-size="20" font-weight="700">Mission Telemetry</text>
+    <text x="746" y="138" fill="#9FBAD8" font-size="15">run/episode traces</text>
+
+    <rect x="928" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="948" y="112" fill="#EAF4FF" font-size="20" font-weight="700">SQLite Tracking</text>
+    <text x="948" y="138" fill="#9FBAD8" font-size="15">local-first persistence</text>
+
+    <rect x="1130" y="72" width="186" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="1150" y="112" fill="#EAF4FF" font-size="20" font-weight="700">Repro Benchmarks</text>
+    <text x="1150" y="138" fill="#9FBAD8" font-size="15">smoke + report outputs</text>
+
+    <rect x="1332" y="72" width="146" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="1352" y="112" fill="#EAF4FF" font-size="20" font-weight="700">LibTorch</text>
+    <text x="1352" y="138" fill="#9FBAD8" font-size="15">CPU backend</text>
+
+    <rect x="120" y="188" width="220" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="140" y="228" fill="#EAF4FF" font-size="20" font-weight="700">UML Architecture</text>
+    <text x="140" y="254" fill="#9FBAD8" font-size="15">component/class/sequence</text>
+
+    <rect x="356" y="188" width="220" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="376" y="228" fill="#EAF4FF" font-size="20" font-weight="700">Linux-First Tooling</text>
+    <text x="376" y="254" fill="#9FBAD8" font-size="15">cmake + cli workflows</text>
+
+    <rect x="592" y="188" width="220" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="612" y="228" fill="#EAF4FF" font-size="20" font-weight="700">Mission Replay UI</text>
+    <text x="612" y="254" fill="#9FBAD8" font-size="15">artifact-driven inspection</text>
+
+    <rect x="828" y="188" width="300" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="848" y="228" fill="#EAF4FF" font-size="20" font-weight="700">Extensible Inference Backend</text>
+    <text x="848" y="254" fill="#9FBAD8" font-size="15">libtorch active, TensorRT deferred</text>
+
+    <rect x="1144" y="188" width="334" height="96" rx="14" fill="#0B1725" stroke="#294159"/>
+    <text x="1164" y="228" fill="#EAF4FF" font-size="20" font-weight="700">Software + AI Engineering Portfolio Quality</text>
+    <text x="1164" y="254" fill="#9FBAD8" font-size="15">systems architecture with control-learning rigor</text>
+  </g>
+</svg>
