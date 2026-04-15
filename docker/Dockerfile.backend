@@ -1,0 +1,23 @@
+FROM ubuntu:24.04 AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake ninja-build libboost-all-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+COPY backend ./backend
+COPY core ./core
+COPY control ./control
+COPY sim ./sim
+COPY rl ./rl
+
+RUN cmake -S backend -B build/backend -G Ninja && \
+    cmake --build build/backend --target orbital_backend
+
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends libboost-system-dev && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /workspace/build/backend/orbital_backend /app/orbital_backend
+EXPOSE 8080
+CMD ["/app/orbital_backend"]

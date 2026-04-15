@@ -21,16 +21,18 @@ option(NMC_ENABLE_ASAN "Enable AddressSanitizer in Debug builds" OFF)
 option(NMC_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer in Debug builds" OFF)
 option(NMC_ENABLE_LTO "Enable link-time optimization in Release-like builds" OFF)
 option(NMC_ENABLE_MUJOCO "Enable MuJoCo environment support" OFF)
+option(NMC_BUILD_ORBITAL_CORE "Build orbital core/control/sim baseline library and tests" ON)
+option(NMC_BUILD_ORBITAL_BACKEND "Build orbital backend WebSocket/REST service" OFF)
 
 set(NMC_EIGEN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen-source" CACHE PATH "Path to Eigen root")
 set(NMC_TORCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/libtorch" CACHE PATH "Path to LibTorch root")
 set(NMC_MUJOCO_ROOT "" CACHE PATH "Optional MuJoCo installation root")
 
-if(DEFINED ENV{NMC_EIGEN_ROOT} AND NOT EXISTS "${NMC_EIGEN_ROOT}/Eigen/Dense")
+if(DEFINED ENV{NMC_EIGEN_ROOT} AND EXISTS "$ENV{NMC_EIGEN_ROOT}/Eigen/Dense")
     set(NMC_EIGEN_ROOT "$ENV{NMC_EIGEN_ROOT}" CACHE PATH "Path to Eigen root" FORCE)
 endif()
 
-if(DEFINED ENV{NMC_TORCH_ROOT} AND NOT EXISTS "${NMC_TORCH_ROOT}/share/cmake/Torch/TorchConfig.cmake")
+if(DEFINED ENV{NMC_TORCH_ROOT} AND EXISTS "$ENV{NMC_TORCH_ROOT}/share/cmake/Torch/TorchConfig.cmake")
     set(NMC_TORCH_ROOT "$ENV{NMC_TORCH_ROOT}" CACHE PATH "Path to LibTorch root" FORCE)
 endif()
 
@@ -59,6 +61,8 @@ message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  NMC_TORCH_ROOT: ${NMC_TORCH_ROOT}")
 message(STATUS "  NMC_EIGEN_ROOT: ${NMC_EIGEN_ROOT}")
 message(STATUS "  NMC_ENABLE_MUJOCO: ${NMC_ENABLE_MUJOCO}")
+message(STATUS "  NMC_BUILD_ORBITAL_CORE: ${NMC_BUILD_ORBITAL_CORE}")
+message(STATUS "  NMC_BUILD_ORBITAL_BACKEND: ${NMC_BUILD_ORBITAL_BACKEND}")
 message(STATUS "  SQLite library: ${NMC_SQLITE3_LIBRARY}")
 
 set(NMC_SOURCES
@@ -213,3 +217,16 @@ set_tests_properties(
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     TIMEOUT 240
 )
+
+if(NMC_BUILD_ORBITAL_CORE)
+    add_subdirectory(core)
+endif()
+
+if(NMC_BUILD_ORBITAL_BACKEND)
+    find_package(Boost QUIET COMPONENTS system)
+    if(Boost_FOUND)
+        add_subdirectory(backend)
+    else()
+        message(WARNING "Boost::system not found. Skipping orbital backend target. Install libboost-all-dev and reconfigure to enable it.")
+    endif()
+endif()

@@ -1,5 +1,6 @@
 # Build outputs
 /build/
+/build-orbital*/
 /cmake-build-*/
 /compile_commands.json
 *.o
@@ -40,3 +41,16 @@ MUJOCO_LOG.TXT
 
 # Public repository dependency strategy
 lib/libtorch/
+
+# Python / MLflow local state
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+mlruns/
+
+# Frontend local state
+frontend/.next/
+frontend/node_modules/
+frontend/.turbo/

@@ -1,0 +1,4 @@
+FROM orbital-neural-control-cpp-cpp-dev:latest
+
+WORKDIR /workspace
+CMD ["python3", "mlops/train_with_mlflow.py", "--tracking-uri", "http://mlflow:5000", "--experiment", "orbital_ppo", "--export-onnx"]

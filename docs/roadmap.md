@@ -1,43 +1,44 @@
 # Roadmap
 
-## Current baseline (implemented)
+## Implemented Baseline
 
-- CPU-first PPO stack in C++20 with LibTorch.
-- Clean train/eval/benchmark CLI.
-- Layered architecture (`domain`, `application`, `infrastructure`, `interfaces`).
-- Structured artifacts with run manifests.
-- SQLite telemetry persistence.
-- CI smoke benchmark + artifact validation.
-- Inference backend abstraction with TensorRT placeholder.
+- CPU-first PPO train/eval/benchmark pipeline in C++20 + LibTorch.
+- Layered architecture (`domain`, `application`, `infrastructure`, `interfaces`, `common`).
+- Reproducible artifact model with run manifests and benchmark summaries.
+- SQLite telemetry persistence (`runs`, `episodes`, `events`, `benchmarks`).
+- Optional MuJoCo integration path.
+- Inference backend abstraction with TensorRT stub.
+- Orbital expansion modules (`core/control/sim/rl`) with deterministic mission rollout primitives.
+- MLflow tracking scripts and ONNX export/registry workflow.
+- C++ telemetry backend and Next.js mission dashboard scaffold.
 
-## Near-term improvements (next)
+## Next 30 Days
 
-1. Add automated regression thresholds for smoke benchmark (return floor, latency ceiling).
-2. Add unit tests for artifact persistence and SQLite schema operations.
-3. Add richer evaluation reports (percentiles, variance, confidence intervals).
-4. Add checkpoint resume tests and compatibility checks.
-5. Add optional config-file ingestion (`--config path.json`) while keeping CLI overrides.
+1. Add config-file ingestion in `nmc` (`--config path.json`) with CLI override precedence.
+2. Add unit tests for SQLite persistence invariants and artifact schema validation.
+3. Add regression thresholds in smoke benchmark (return floor, latency ceiling).
+4. Add dashboard panels for advantage traces and policy-ratio drift from persisted reports.
+5. Add MLflow run-link generation directly into run manifests.
 
-## Mid-term RL systems upgrades
+## Next 90 Days
 
-1. Environment randomization and curriculum scheduling interfaces.
-2. Batched evaluation workers for robust benchmark statistics.
-3. Better fault tolerance for long-running experiments.
-4. Experiment sweep tooling with deterministic run matrix generation.
-5. Pluggable reward decomposition telemetry.
+1. Introduce 6DOF orbital environment interface and perturbation packs.
+2. Add LQR/MPC comparison harness with standardized metrics and confidence intervals.
+3. Add safety envelope checks (actuation limits, residual bounds, unstable trajectory flags).
+4. Add ARM cross-compilation profile and embedded latency profiling scripts.
+5. Add model-serving contract tests between LibTorch and ONNX runtimes.
 
-## TensorRT integration path (future, optional)
+## Long-Term Direction (Orbital Autonomy)
 
-1. Implement concrete `TensorRtPolicyBackend` under `domain/inference/`.
-2. Add ONNX/export pipeline from `PolicyValueModel` checkpoint.
-3. Add backend-level parity tests against LibTorch inference.
-4. Add runtime backend selection policy with fallback to LibTorch.
-5. Keep TensorRT path optional and disabled by default.
+1. Mission-level objective packs (station-keeping, rendezvous, collision avoidance).
+2. Hierarchical policy structure for tactical vs strategic orbital maneuvers.
+3. Formalized control-theoretic validation with Lyapunov-style empirical certificates.
+4. Optional TensorRT inference backend with strict parity checks and fallback to LibTorch.
+5. Digital-twin replay workflows for failure analysis and mission auditability.
 
-## Orbital/satellite domain evolution path
+## Deferred by Design
 
-1. Add `OrbitalDynamicsEnv` implementing `domain::env::Environment`.
-2. Add mission-level success metrics (fuel efficiency, pointing, rendezvous constraints).
-3. Introduce safety envelopes and constraint-aware reward shaping.
-4. Add sim-to-policy validation harness specific to orbital autonomy tasks.
-5. Keep PPO core reusable while domain complexity grows in environment modules.
+- CUDA acceleration (intentionally not required in baseline).
+- Active TensorRT dependency (kept optional and future-scoped).
+- Distributed training infrastructure (deferred until orbital environment fidelity increases).
+

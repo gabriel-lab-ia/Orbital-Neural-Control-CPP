@@ -1,117 +1,108 @@
 # Architecture Overview
 
-This repository is now a CPU-first C++20 reinforcement learning systems baseline centered on PPO, reproducible runs, and local telemetry.
+This repository now has two complementary tracks:
 
-## Layered structure
+1. **Production baseline (`src/`)**: CPU-first PPO train/eval/benchmark pipeline in C++20 + LibTorch.
+2. **Orbital expansion stack (`core/control/sim/rl + backend/frontend + mlops`)**: mission-oriented evolution path for orbital autonomy, telemetry streaming, and experiment operations.
+
+## Layered Core (`src/`)
 
 - `src/domain/`
-  - RL core behavior and domain contracts.
-  - `config/`: explicit train/eval/benchmark config structs.
-  - `env/`: environment interface, factory, and concrete environments.
-  - `ppo/`: policy-value model, rollout/metrics types, PPO trainer.
-  - `inference/`: backend abstraction for policy inference (`libtorch` active, TensorRT stub placeholder).
+  - `ppo/`: actor-critic model, PPO objective/training loop.
+  - `env/`: environment interface and environment factory.
+  - `inference/`: inference backend abstraction (`libtorch` active, TensorRT stub).
+  - `config/`: explicit train/eval/benchmark config objects.
 - `src/application/`
-  - Use-case orchestration for `train`, `eval`, and `benchmark`.
-  - Coordinates domain components and infrastructure concerns.
+  - `training_runner`, `evaluation_runner`, `benchmark_runner`.
 - `src/infrastructure/`
-  - Persistence and I/O boundaries.
-  - `artifacts/`: run/checkpoint/layout management and manifests.
-  - `persistence/`: SQLite experiment store (`runs`, `episodes`, `events`, `benchmarks`).
-  - `reporting/`: CSV/live-rollout exporters.
+  - `artifacts/`: run layout, manifests, checkpoint management.
+  - `persistence/`: SQLite store (`runs`, `episodes`, `events`, `benchmarks`).
+  - `reporting/`: CSV/live rollout reports.
 - `src/interfaces/`
-  - CLI entrypoint and command parsing.
+  - CLI command surface: `train`, `eval`, `benchmark`.
 - `src/common/`
-  - Shared utilities (timestamp/run-id generation, JSON escaping).
+  - time/JSON helpers and run-id generation.
 
-## Runtime modes
+## Orbital Expansion Modules
 
-### Train mode
+- `core/`
+  - Header-focused orbital control kernel (`orbital::` namespace).
+  - Deterministic 3DOF dynamics and reward model primitives.
+  - `OrbitalControlCore` mission rollout API.
+- `control/`
+  - baseline LQR/PID controllers used for benchmark reference.
+- `sim/`
+  - perturbation/disturbance model interfaces.
+- `rl/`
+  - runtime modes (training/eval/production) and determinism profiles.
+- `training/`
+  - Python orchestration + `pybind11` bridge (`py_orbital_core`).
+- `mlops/`
+  - MLflow tracking pipeline, ONNX export, model registry scripts.
+- `backend/`
+  - C++ REST/WebSocket telemetry stream service.
+- `frontend/`
+  - Next.js mission dashboard (3D orbit + live telemetry charts).
 
-- Command: `./build/nmc train [options]`
-- Creates run layout under `artifacts/runs/<run_id>/`
-- Executes PPO updates through `domain::ppo::PPOTrainer`
-- Persists telemetry to SQLite
-- Saves checkpoint + metadata
-- Writes training summary + manifest
+## Artifact and Persistence Model
 
-### Eval mode
-
-- Command: `./build/nmc eval [options]`
-- Loads checkpoint metadata and inference backend
-- Runs deterministic/stochastic evaluation episodes
-- Persists evaluation episode telemetry and summary
-- Writes evaluation manifest
-
-### Benchmark mode
-
-- Command: `./build/nmc benchmark --quick`
-- Runs short training + evaluation pipeline
-- Validates required artifacts are readable
-- Writes benchmark JSON/CSV summary in `artifacts/benchmarks/`
-
-## Artifact model
-
-```
+```text
 artifacts/
   runs/<run_id>/
     manifest.json
     training_metrics.csv
     training_summary.json
     evaluation_summary.json
-    live_rollout.csv
-    checkpoints/
-      policy_last.pt
-      policy_last.meta
-  checkpoints/
-    <run_id>_policy_last.pt
-    <run_id>_policy_last.meta
-  reports/
-    <run_id>_training_summary.json
-    <run_id>_evaluation_summary.json
-  benchmarks/
-    <benchmark_id>.json
-    <benchmark_id>.csv
-    latest.json
-    latest.csv
+    checkpoints/policy_last.pt
   latest/
-    manifest.json
-    checkpoint.pt
-    checkpoint.meta
-    training_summary.json
-    evaluation_summary.json
-    training_metrics.csv
-    live_rollout.csv
+  reports/
+  benchmarks/
   experiments.sqlite
+  mlflow/
+  mlflow-artifacts/
 ```
 
-## SQLite schema
+SQLite schema (baseline runtime store):
 
-Implemented in `src/infrastructure/persistence/sqlite_experiment_store.cpp`.
+- `runs`
+- `episodes`
+- `events`
+- `benchmarks`
 
-- `runs`: run metadata, status transitions, config JSON, summary JSON.
-- `episodes`: per-episode telemetry from train/eval.
-- `events`: run-level events (resume, lifecycle, etc.).
-- `benchmarks`: benchmark summaries and linkage to run IDs.
+MLflow store (MLOps):
 
-## Inference extensibility
+- experiment params/metrics/tags
+- run artifacts
+- ONNX model artifacts and registry integration path
 
-`domain::inference::PolicyInferenceBackend` decouples evaluation inference from trainer internals.
+## Runtime Modes
 
-- Active now: `LibTorchPolicyBackend` (CPU, enabled by default).
-- Deferred intentionally: `TensorRtPolicyBackendStub`.
+### Baseline CLI
 
-This allows future TensorRT inference integration without changing CLI/app contracts.
+- `./build/nmc train ...`
+- `./build/nmc eval ...`
+- `./build/nmc benchmark --quick ...`
 
-## Determinism and reproducibility
+### Mission Telemetry Demo
 
-- Seed control in config (`seed`) and `torch::manual_seed` usage.
-- Stable artifact naming with generated run IDs and UTC timestamps.
-- Every run writes `manifest.json` + structured summaries.
-- Smoke benchmark path is automated in CI (`ctest -R nmc_smoke_benchmark`).
+- backend emits telemetry through `/ws/telemetry`
+- frontend consumes stream for 3D mission visualization and control diagnostics
 
-## Current limitations
+### MLOps
 
-- Training still uses in-process env vectorization (single process).
-- TensorRT backend is a stub only.
-- Distributed training and large-scale hyperparameter sweeps are deferred.
-- MuJoCo support remains optional compile-time integration.
+- tracked training with MLflow tags (`orbital_dynamics`, `perturbation_level`, `reward_shaping`)
+- ONNX export for embedded inference contract
+
+## Optional Integrations and Guardrails
+
+- MuJoCo remains optional (`NMC_ENABLE_MUJOCO=ON` only when available).
+- TensorRT backend remains a stub and is intentionally disabled by default.
+- CPU-first path is the default CI and local baseline.
+
+## Determinism and Reproducibility
+
+- seed control in train/eval/benchmark configs
+- run manifests and structured summaries for every run
+- benchmark smoke path with artifact validation in CI
+- deterministic mission rollout path in orbital core tests
+

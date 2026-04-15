@@ -1,0 +1,15 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake ninja-build python3 python3-pip \
+    unzip wget curl libsqlite3-dev ca-certificates git && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+COPY . .
+RUN bash tools/setup_libtorch_cpu.sh
+RUN cmake --preset dev -DNMC_TORCH_ROOT=/workspace/lib/libtorch -DNMC_ENABLE_MUJOCO=OFF && \
+    cmake --build --preset build
+RUN python3 -m pip install --no-cache-dir -r mlops/requirements.txt
+
+CMD ["bash"]

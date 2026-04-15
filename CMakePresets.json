@@ -29,6 +29,26 @@
         "NMC_ENABLE_ASAN": "ON",
         "NMC_ENABLE_UBSAN": "ON"
       }
+    },
+    {
+      "name": "orbital-stack",
+      "displayName": "Orbital Stack (Core + Backend)",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build-orbital",
+      "cacheVariables": {
+        "NMC_BUILD_ORBITAL_CORE": "ON",
+        "NMC_BUILD_ORBITAL_BACKEND": "ON"
+      }
+    },
+    {
+      "name": "orbital-core-only",
+      "displayName": "Orbital Core Only",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build-orbital-core",
+      "cacheVariables": {
+        "NMC_BUILD_ORBITAL_CORE": "ON",
+        "NMC_BUILD_ORBITAL_BACKEND": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -44,6 +64,24 @@
       "configurePreset": "debug-sanitized",
       "targets": [
         "nmc"
+      ]
+    },
+    {
+      "name": "build-orbital",
+      "configurePreset": "orbital-core-only",
+      "targets": [
+        "nmc",
+        "orbital_core",
+        "orbital_core_tests",
+        "orbital_baseline_tests",
+        "orbital_control_benchmark"
+      ]
+    },
+    {
+      "name": "build-orbital-backend",
+      "configurePreset": "orbital-stack",
+      "targets": [
+        "orbital_backend"
       ]
     }
   ],

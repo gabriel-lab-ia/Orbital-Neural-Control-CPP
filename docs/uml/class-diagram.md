@@ -3,18 +3,15 @@
 ```mermaid
 classDiagram
     class PolicyValueModel {
-        +act(observations, deterministic) PolicyOutput
+        +act(observations, deterministic)
         +evaluate_actions(observations, actions)
         +values(observations)
     }
 
     class PPOTrainer {
-        -TrainerConfig config_
-        -PolicyValueModel model_
-        -vector~unique_ptr~Environment~~ environments_
         +train() vector~TrainingMetrics~
         +run_live_episode(max_steps, deterministic)
-        +consume_completed_episodes() vector~EpisodeRecord~
+        +consume_completed_episodes()
         +model() PolicyValueModel&
     }
 
@@ -33,23 +30,15 @@ classDiagram
     class PolicyInferenceBackend {
         <<interface>>
         +load_checkpoint(path)
-        +infer(observation, deterministic) InferenceOutput
+        +infer(observation, deterministic)
     }
 
     class LibTorchPolicyBackend
     class TensorRtPolicyBackendStub
 
-    class TrainingRunner {
-        +run(TrainConfig) TrainingRunOutput
-    }
-
-    class EvaluationRunner {
-        +run(EvalConfig) EvaluationRunOutput
-    }
-
-    class BenchmarkRunner {
-        +run(BenchmarkConfig) BenchmarkRunOutput
-    }
+    class TrainingRunner
+    class EvaluationRunner
+    class BenchmarkRunner
 
     class SQLiteExperimentStore {
         +insert_run_start(...)
@@ -59,7 +48,21 @@ classDiagram
         +insert_benchmark(...)
     }
 
-    class ArtifactLayout
+    class OrbitalControlCore {
+        +run_open_loop_rollout(...)
+    }
+
+    class OrbitalDynamics3DOF {
+        +propagate(state, command, dt)
+    }
+
+    class RewardModel {
+        +compute_step_reward(...)
+    }
+
+    class LqrBaselineController3DOF {
+        +compute(position_error, velocity_error)
+    }
 
     Environment <|.. PointMassEnv
     Environment <|.. MuJoCoCartPoleEnv
@@ -72,7 +75,6 @@ classDiagram
 
     TrainingRunner --> PPOTrainer
     TrainingRunner --> SQLiteExperimentStore
-    TrainingRunner --> ArtifactLayout
 
     EvaluationRunner --> PolicyInferenceBackend
     EvaluationRunner --> Environment
@@ -80,4 +82,8 @@ classDiagram
 
     BenchmarkRunner --> TrainingRunner
     BenchmarkRunner --> EvaluationRunner
+
+    OrbitalControlCore o-- OrbitalDynamics3DOF
+    OrbitalControlCore o-- RewardModel
+    OrbitalControlCore --> LqrBaselineController3DOF : backend telemetry baseline
 ```

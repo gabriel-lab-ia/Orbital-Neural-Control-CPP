@@ -6,9 +6,10 @@ on:
   pull_request:
 
 jobs:
-  build:
+  baseline-x86_64:
+    name: baseline-x86_64
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -38,16 +39,17 @@ jobs:
           bash tools/setup_libtorch_cpu.sh
           test -f "$GITHUB_WORKSPACE/lib/libtorch/share/cmake/Torch/TorchConfig.cmake"
 
-      - name: Configure baseline build
+      - name: Configure
         run: |
           set -euxo pipefail
           cmake --version
           ninja --version
           cmake --preset dev \
             -DNMC_TORCH_ROOT="$GITHUB_WORKSPACE/lib/libtorch" \
-            -DNMC_ENABLE_MUJOCO=OFF
+            -DNMC_ENABLE_MUJOCO=OFF \
+            -DNMC_BUILD_ORBITAL_BACKEND=OFF
 
-      - name: Build
+      - name: Build nmc
         run: |
           set -euxo pipefail
           cmake --build --preset build --verbose
@@ -64,3 +66,43 @@ jobs:
           test -f artifacts/benchmarks/latest.json
           test -f artifacts/latest/manifest.json
           test -f artifacts/latest/checkpoint.pt
+
+      - name: Upload smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: |
+            artifacts/benchmarks/latest.json
+            artifacts/latest/manifest.json
+            artifacts/latest/checkpoint.pt
+
+  core-arm64-cross:
+    name: core-arm64-cross
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cross-compiler toolchain
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Configure core for ARM64
+        run: |
+          set -euxo pipefail
+          cmake -S core -B build-core-arm64 -G Ninja \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+      - name: Build core targets
+        run: |
+          set -euxo pipefail
+          cmake --build build-core-arm64 --verbose
+          file build-core-arm64/orbital_core_tests | tee /tmp/orbital_core_tests.file
+          grep -E "aarch64|ARM aarch64" /tmp/orbital_core_tests.file
