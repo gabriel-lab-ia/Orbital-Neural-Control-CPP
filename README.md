@@ -132,58 +132,17 @@ See [Architecture Docs](docs/architecture.md) and UML under `docs/uml/`.
 
 ## Mathematical PPO Foundation
 
-For samples collected under the previous policy \(\pi_{\theta_{\mathrm{old}}}\), the PPO objective used by the actor-critic loop is:
+PPO equations are provided as a GitHub-safe vector block for consistent rendering in dark/light themes.
 
-$$
-\mathcal{L}_{\mathrm{PPO}}(\theta)=
-\mathbb{E}_t\left[
-\min\!\left(
-r_t(\theta)\hat{A}_t,\,
-\operatorname{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t
-\right)
-- c_v \mathcal{L}^{\mathrm{value}}_t(\theta)
-+ c_e \mathcal{H}(\pi_\theta(\cdot \mid s_t))
-\right]
-$$
+<p align="center">
+  <img src="assets/math-ppo-foundation.svg" alt="PPO foundation equations covering policy ratio, clipped objective, value and entropy terms, GAE, and Gaussian continuous-control policy." width="100%" />
+</p>
 
-with importance ratio
-
-$$
-r_t(\theta)=
-\frac{\pi_\theta(a_t \mid s_t)}
-{\pi_{\theta_{\mathrm{old}}}(a_t \mid s_t)}
-$$
-
-and value target/loss
-
-$$
-\mathcal{L}^{\mathrm{value}}_t(\theta)=
-\left(V_\theta(s_t)-V_t^{\mathrm{target}}\right)^2,\qquad
-V_t^{\mathrm{target}}=\hat{A}_t+V_{\theta_{\mathrm{old}}}(s_t)
-$$
-
-Generalized Advantage Estimation (GAE) is computed from TD residuals:
-
-$$
-\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
-$$
-
-$$
-\hat{A}^{\mathrm{GAE}(\lambda)}_t
-= \sum_{l=0}^{T-t-1}(\gamma\lambda)^l\,\delta_{t+l}
-$$
-
-Equivalent backward recursion used in implementation:
-
-$$
-\hat{A}_t=\delta_t + \gamma\lambda \hat{A}_{t+1}
-$$
-
-Continuous-control adaptation:
-
-- Gaussian policy head with bounded log-std for stable stochastic control
-- clipped ratio updates reduce destructive policy jumps
-- reward/advantage shaping supports orbital residual objectives
+- `policy ratio`: compares new-policy and previous-policy action likelihoods.
+- `clipped objective`: limits destructive policy updates through ratio clipping.
+- `value + entropy`: critic regression stabilizes value targets, entropy preserves exploration pressure.
+- `GAE`: reduces variance in advantage estimation while keeping useful temporal structure.
+- `continuous Gaussian control`: policy predicts mean and variance for smooth stochastic actions.
 
 ## Reproducible Artifacts
 
