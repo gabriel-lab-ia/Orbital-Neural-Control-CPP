@@ -130,19 +130,87 @@ Expansion modules are isolated from the baseline runtime:
 
 See [Architecture Docs](docs/architecture.md) and UML under `docs/uml/`.
 
-## Mathematical PPO Foundation
+## Mathematical Foundations (PPO + Continuous Control)
 
-PPO equations are provided as a GitHub-safe vector block for consistent rendering in dark/light themes.
+This repository keeps the control-learning math explicit, compact, and engineering-readable for PPO-based optimization in continuous-control and orbital-autonomy settings.
 
-<p align="center">
-  <img src="assets/math-ppo-foundation.svg" alt="PPO foundation equations covering policy ratio, clipped objective, value and entropy terms, GAE, and Gaussian continuous-control policy." width="100%" />
-</p>
+### Policy ratio and clipped improvement
 
-- `policy ratio`: compares new-policy and previous-policy action likelihoods.
-- `clipped objective`: limits destructive policy updates through ratio clipping.
-- `value + entropy`: critic regression stabilizes value targets, entropy preserves exploration pressure.
-- `GAE`: reduces variance in advantage estimation while keeping useful temporal structure.
-- `continuous Gaussian control`: policy predicts mean and variance for smooth stochastic actions.
+- `r_t(θ) = π_θ(a_t | s_t) / π_θ_old(a_t | s_t)`
+- `L_clip(θ) = E_t [ min( r_t(θ) Â_t , clip(r_t(θ), 1 - ε, 1 + ε) Â_t ) ]`
+
+Interpretation:
+
+- `r_t(θ)` measures how strongly the updated policy reweights sampled actions;
+- clipping prevents destructive policy jumps;
+- `Â_t` determines whether the sampled action should be reinforced or suppressed.
+
+### Value and entropy terms
+
+- `L_value = (V_θ(s_t) - V_target)^2`
+- `L_total = L_clip(θ) - c_v L_value + c_e H(π_θ(· | s_t))`
+
+Interpretation:
+
+- the critic provides a learned baseline that reduces gradient variance;
+- the value term stabilizes training;
+- the entropy term preserves exploratory behavior and delays premature collapse.
+
+### Generalized Advantage Estimation
+
+- `δ_t = r_t + γ V(s_{t+1}) - V(s_t)`
+- `Â_t = δ_t + γ λ Â_{t+1}`
+- `Â_t = Σ_l (γ λ)^l δ_{t+l}`
+
+Interpretation:
+
+- `δ_t` is the one-step temporal-difference residual;
+- GAE smooths the policy-improvement signal across time;
+- `λ` controls the bias-variance trade-off in advantage estimation.
+
+### Continuous Gaussian control
+
+- `a_t ~ N( μ_θ(s_t), σ_θ(s_t)^2 )`
+
+Implementation view:
+
+- mean head: `μ_θ(s_t)`
+- scale head: `σ_θ(s_t)` or `log σ_θ(s_t)`
+
+Interpretation:
+
+- the actor emits a continuous control distribution rather than discrete logits;
+- bounded variance improves numerical stability;
+- Gaussian policies support smooth actuation and trajectory correction.
+
+### Orbital-control objective shaping
+
+A representative control-oriented reward may be structured as:
+
+- `r_t = -w_pos ||e_pos||^2 - w_vel ||e_vel||^2 - w_ctrl ||u_t||^2 - w_risk C_t`
+
+Where:
+
+- `e_pos` is orbital position error;
+- `e_vel` is velocity error;
+- `u_t` is control effort / thrust command;
+- `C_t` is a mission-risk or constraint-violation penalty.
+
+Interpretation:
+
+- the learned policy optimizes long-horizon orbital behavior rather than one-step greedy corrections;
+- clipped PPO updates improve control stability;
+- GAE helps identify whether recent control actions improved mission state over time.
+
+### Why this math matters here
+
+This mathematical structure is what turns the project into an engineering control system rather than a generic RL demo:
+
+- PPO supplies stable policy improvement;
+- actor-critic decomposition supports scalable training;
+- GAE improves signal quality for long-horizon control;
+- Gaussian policies make continuous actuation practical;
+- reward shaping links learning directly to orbital mission objectives.
 
 ## Reproducible Artifacts
 
