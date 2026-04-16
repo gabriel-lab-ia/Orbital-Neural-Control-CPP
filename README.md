@@ -139,7 +139,7 @@ Envelope fields:
 
 ## Frontend Mission Console (Optional)
 
-Current frontend stack is **React + TypeScript + Vite**.
+Current frontend stack is **React.js + TypeScript**
 
 Implemented UX highlights:
 
