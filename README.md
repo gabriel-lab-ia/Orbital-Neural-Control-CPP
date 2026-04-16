@@ -340,7 +340,6 @@ Design direction:
 The UI is intentionally aligned with the system architecture of the C++ runtime and experiment artifacts.
 
 ## Frontend Stack
-<img width="1852" height="807" alt="Screenshot_2026-04-15_22-38-08" src="https://github.com/user-attachments/assets/ad7f9f4f-db6f-4dbf-91c9-11c772d2de7b" />
 Core technologies:
 
 - React
@@ -359,13 +358,7 @@ Supporting libraries:
 - strict TypeScript typing for telemetry contracts
 
 The frontend is CPU-light and focuses on visualization, not training.
-
----
-
-## Frontend Architecture
-
-The frontend follows a layered structure inspired by domain-driven and feature-oriented frontend architecture.
-
+<img width="1852" height="807" alt="Screenshot_2026-04-15_22-38-08" src="https://github.com/user-attachments/assets/ad7f9f4f-db6f-4dbf-91c9-11c772d2de7b" />
 
 ## CI Baseline
 
