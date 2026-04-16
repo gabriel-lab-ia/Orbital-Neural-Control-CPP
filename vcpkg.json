@@ -6,7 +6,10 @@
   "dependencies": [
     "eigen3",
     "sqlite3",
-    "libtorch"
+    {
+      "name": "libtorch",
+      "default-features": false
+    }
   ],
   "features": {
     "backend": {
