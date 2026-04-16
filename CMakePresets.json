@@ -32,7 +32,9 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_FEATURE_FLAGS": "manifests"
+        "VCPKG_FEATURE_FLAGS": "manifests,binarycaching",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_HOST_TRIPLET": "x64-linux"
       }
     },
     {
@@ -124,7 +126,9 @@
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_FEATURE_FLAGS": "manifests",
+        "VCPKG_FEATURE_FLAGS": "manifests,binarycaching",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_HOST_TRIPLET": "x64-linux",
         "NMC_USE_LEGACY_VENDOR_DEPS": "OFF"
       }
     }

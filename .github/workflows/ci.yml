@@ -5,8 +5,16 @@ on:
     branches: ["main", "master"]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CMAKE_GENERATOR: Ninja
+  VCPKG_DEFAULT_TRIPLET: x64-linux
+  VCPKG_DEFAULT_HOST_TRIPLET: x64-linux
+  VCPKG_FEATURE_FLAGS: manifests,binarycaching
+  VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
 
 jobs:
   baseline-vcpkg:
@@ -22,7 +30,10 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ninja-build curl zip unzip tar pkg-config libsqlite3-dev python3
+          sudo apt-get install -y \
+            build-essential ninja-build curl zip unzip tar pkg-config \
+            libsqlite3-dev python3 \
+            autoconf autoconf-archive automake libtool libtool-bin
 
       - name: Setup CMake + Ninja
         uses: lukka/get-cmake@latest
@@ -34,15 +45,31 @@ jobs:
         run: |
           set -euxo pipefail
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
+          if [[ -n "${VCPKG_BASELINE}" ]]; then
+            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
+            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
+          fi
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/vcpkg/downloads
+            ~/.cache/vcpkg/archives
+          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
 
       - name: Configure
         run: |
           set -euxo pipefail
           cmake --preset ci \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_FEATURE_FLAGS=manifests \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
+            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
             -DNMC_USE_LEGACY_VENDOR_DEPS=OFF \
             -DNMC_ENABLE_MUJOCO=OFF \
             -DNMC_BUILD_ORBITAL_BACKEND=OFF
@@ -106,21 +133,40 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ninja-build curl zip unzip tar pkg-config libsqlite3-dev
+          sudo apt-get install -y \
+            build-essential ninja-build curl zip unzip tar pkg-config \
+            libsqlite3-dev python3 \
+            autoconf autoconf-archive automake libtool libtool-bin
 
       - name: Setup vcpkg
         run: |
           set -euxo pipefail
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
+          if [[ -n "${VCPKG_BASELINE}" ]]; then
+            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
+            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
+          fi
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/vcpkg/downloads
+            ~/.cache/vcpkg/archives
+          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
 
       - name: Configure debug sanitized
         run: |
           set -euxo pipefail
           cmake --preset debug-sanitized \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_FEATURE_FLAGS=manifests \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
+            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
             -DNMC_USE_LEGACY_VENDOR_DEPS=OFF
 
       - name: Build and smoke
@@ -142,21 +188,40 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ninja-build curl zip unzip tar pkg-config libsqlite3-dev
+          sudo apt-get install -y \
+            build-essential ninja-build curl zip unzip tar pkg-config \
+            libsqlite3-dev python3 \
+            autoconf autoconf-archive automake libtool libtool-bin
 
       - name: Setup vcpkg
         run: |
           set -euxo pipefail
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
+          if [[ -n "${VCPKG_BASELINE}" ]]; then
+            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
+            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
+          fi
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/vcpkg/downloads
+            ~/.cache/vcpkg/archives
+          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
 
       - name: Configure debug tsan
         run: |
           set -euxo pipefail
           cmake --preset debug-tsan \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_FEATURE_FLAGS=manifests \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
+            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
             -DNMC_USE_LEGACY_VENDOR_DEPS=OFF
 
       - name: Build and smoke
@@ -178,21 +243,40 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ninja-build curl zip unzip tar pkg-config libsqlite3-dev gcovr
+          sudo apt-get install -y \
+            build-essential ninja-build curl zip unzip tar pkg-config \
+            libsqlite3-dev gcovr python3 \
+            autoconf autoconf-archive automake libtool libtool-bin
 
       - name: Setup vcpkg
         run: |
           set -euxo pipefail
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
+          if [[ -n "${VCPKG_BASELINE}" ]]; then
+            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
+            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
+          fi
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
           echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/vcpkg/downloads
+            ~/.cache/vcpkg/archives
+          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
 
       - name: Configure debug coverage
         run: |
           set -euxo pipefail
           cmake --preset debug-coverage \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_FEATURE_FLAGS=manifests \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
+            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
             -DNMC_USE_LEGACY_VENDOR_DEPS=OFF
 
       - name: Build and run tests
