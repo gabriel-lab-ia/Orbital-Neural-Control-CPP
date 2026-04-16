@@ -148,6 +148,9 @@ Implemented UX highlights:
 - 3D Earth-like rendering with continent-aware procedural textures
 - orbit path + satellite trace + timeline scrubber + event markers
 - technical telemetry and benchmark tables for engineering inspection
+  
+<img width="1898" height="841" alt="Screenshot_2026-04-16_13-17-22" 
+  src="https://github.com/user-attachments/assets/8cd0acd7-c6c3-47f2-977c-8a12d0cb0cde" />
 
 ## Docker / Compose
 
