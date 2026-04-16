@@ -323,6 +323,50 @@ python3 -m pip install -r mlops/requirements.txt
 python3 mlops/train_with_mlflow.py --tracking-uri http://localhost:5000 --experiment orbital_ppo --run-id mlflow_orbital_001 --seed 7 --updates 30 --num-envs 16 --env point_mass --export-onnx
 ```
 
+## Frontend Mission Control Interface
+
+The repository includes a **React + TypeScript mission-control visualization layer** designed to inspect reinforcement learning runs, telemetry signals, and orbital trajectories in a structured engineering interface.
+
+The frontend is not a marketing UI or demo landing page.  
+It is an architectural component intended to evolve into a **visual inspection and replay interface for autonomy experiments, simulation outputs, and control-system telemetry**.
+
+Design direction:
+- dark mission-control interface
+- technical telemetry panels
+- replayable trajectory inspection
+- structured engineering UX
+- layered software architecture aligned with backend runtime artifacts
+
+The UI is intentionally aligned with the system architecture of the C++ runtime and experiment artifacts.
+
+## Frontend Stack
+<img width="1852" height="807" alt="Screenshot_2026-04-15_22-38-08" src="https://github.com/user-attachments/assets/ad7f9f4f-db6f-4dbf-91c9-11c772d2de7b" />
+Core technologies:
+
+- React
+- TypeScript
+- Vite
+- Three.js
+- React Three Fiber
+- modular CSS architecture
+- typed domain contracts
+- layered frontend architecture
+
+Supporting libraries:
+
+- Zustand (lightweight state management)
+- drei utilities for Three.js
+- strict TypeScript typing for telemetry contracts
+
+The frontend is CPU-light and focuses on visualization, not training.
+
+---
+
+## Frontend Architecture
+
+The frontend follows a layered structure inspired by domain-driven and feature-oriented frontend architecture.
+
+
 ## CI Baseline
 
 GitHub Actions validates a meaningful CPU-first path:
