@@ -4,16 +4,19 @@
 #include <filesystem>
 #include <iostream>
 #include <numeric>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
 
 #include "common/json_utils.h"
 #include "common/time_utils.h"
+#include "domain/config/config_validation.h"
 #include "domain/env/environment_factory.h"
 #include "domain/inference/inference_backend_factory.h"
 #include "infrastructure/artifacts/artifact_layout.h"
 #include "infrastructure/artifacts/checkpoint_manager.h"
+#include "infrastructure/artifacts/run_manifest.h"
 #include "infrastructure/persistence/sqlite_experiment_store.h"
 
 namespace nmc::application {
@@ -93,34 +96,6 @@ std::string evaluation_summary_json(
     return stream.str();
 }
 
-std::string manifest_json(
-    const std::string& run_id,
-    const std::string& started_at,
-    const std::string& ended_at,
-    const std::string& status,
-    const std::string& config_json,
-    const infrastructure::artifacts::ArtifactLayout& layout,
-    const std::string& environment,
-    const std::string& checkpoint_path
-) {
-    std::ostringstream stream;
-    stream << "{\n";
-    stream << "  \"run_id\": \"" << common::json_escape(run_id) << "\",\n";
-    stream << "  \"mode\": \"eval\",\n";
-    stream << "  \"environment\": \"" << common::json_escape(environment) << "\",\n";
-    stream << "  \"checkpoint\": \"" << common::json_escape(checkpoint_path) << "\",\n";
-    stream << "  \"started_at\": \"" << common::json_escape(started_at) << "\",\n";
-    stream << "  \"ended_at\": \"" << common::json_escape(ended_at) << "\",\n";
-    stream << "  \"status\": \"" << common::json_escape(status) << "\",\n";
-    stream << "  \"config\": " << config_json << ",\n";
-    stream << "  \"artifacts\": {\n";
-    stream << "    \"run_dir\": \"" << common::json_escape(layout.run_dir.string()) << "\",\n";
-    stream << "    \"evaluation_summary_json\": \"" << common::json_escape(layout.eval_summary_json.string()) << "\"\n";
-    stream << "  }\n";
-    stream << "}\n";
-    return stream.str();
-}
-
 }  // namespace
 
 EvaluationRunner::EvaluationRunner(std::filesystem::path artifact_root)
@@ -131,6 +106,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
     if (config.run_id.empty()) {
         config.run_id = common::make_run_id("eval");
     }
+    domain::config::validate_eval_config_or_throw(config);
 
     const auto started_at = common::now_utc_iso8601();
     const auto layout = infrastructure::artifacts::make_layout(artifact_root_, config.run_id);
@@ -149,6 +125,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
     if (config.environment.empty()) {
         config.environment = checkpoint_meta.environment;
     }
+    domain::config::validate_eval_config_or_throw(config);
 
     db.insert_run_start(
         {
@@ -166,9 +143,11 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
     std::string summary_json;
     try {
         domain::env::EnvironmentSpec env_spec;
-        env_spec.kind = config.environment;
+        env_spec.kind = domain::env::parse_environment_kind_or_throw(config.environment);
         env_spec.mujoco_model_path = config.mujoco_model_path;
+        env_spec.point_mass_reward = config.point_mass_reward;
 
+        torch::manual_seed(static_cast<uint64_t>(config.seed));
         auto env_pack = domain::env::make_environment_pack(env_spec, 1);
         auto environment = std::move(env_pack.environments.front());
 
@@ -177,7 +156,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
         const int64_t hidden_dim = checkpoint_meta.hidden_dim > 0 ? checkpoint_meta.hidden_dim : 96;
 
         auto backend = domain::inference::make_inference_backend(
-            config.inference_backend,
+            domain::inference::parse_inference_backend_or_throw(config.inference_backend),
             observation_dim,
             action_dim,
             hidden_dim
@@ -228,6 +207,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
         lengths.reserve(episodes.size());
         successes.reserve(episodes.size());
 
+        const auto telemetry_timestamp = common::now_utc_iso8601();
         for (const auto& episode : episodes) {
             returns.push_back(episode.episode_return);
             lengths.push_back(episode.episode_length);
@@ -242,7 +222,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
                     episode.episode_return,
                     episode.episode_length,
                     episode.success,
-                    common::now_utc_iso8601()
+                    telemetry_timestamp
                 }
             );
         }
@@ -268,15 +248,22 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
         );
 
         const auto finished_at = common::now_utc_iso8601();
-        const auto manifest = manifest_json(
-            config.run_id,
-            started_at,
-            finished_at,
-            "completed",
-            domain::config::to_json(config),
-            layout,
-            config.environment,
-            checkpoint_path.string()
+        const auto manifest = infrastructure::artifacts::render_run_manifest_json(
+            {
+                config.run_id,
+                "eval",
+                config.environment,
+                started_at,
+                finished_at,
+                "completed",
+                domain::config::to_json(config),
+                {
+                    {"run_dir", layout.run_dir},
+                    {"evaluation_summary_json", layout.eval_summary_json}
+                },
+                checkpoint_path.string(),
+                std::nullopt
+            }
         );
         infrastructure::artifacts::write_text_file(layout.run_manifest_json, manifest);
 
@@ -302,11 +289,69 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
             avg_length,
             success_rate
         };
-    } catch (...) {
+    } catch (const std::exception& error) {
         const auto failed_at = common::now_utc_iso8601();
         const std::string error_summary = "{\"status\":\"failed\",\"run_id\":\"" +
-            common::json_escape(config.run_id) + "\"}";
-        db.finalize_run(config.run_id, "failed", failed_at, error_summary);
+            common::json_escape(config.run_id) + "\",\"error\":\"" + common::json_escape(error.what()) + "\"}";
+        try {
+            const auto failed_manifest = infrastructure::artifacts::render_run_manifest_json(
+                {
+                    config.run_id,
+                    "eval",
+                    config.environment,
+                    started_at,
+                    failed_at,
+                    "failed",
+                    domain::config::to_json(config),
+                    {
+                        {"run_dir", layout.run_dir},
+                        {"evaluation_summary_json", layout.eval_summary_json}
+                    },
+                    checkpoint_path.string(),
+                    error.what()
+                }
+            );
+            infrastructure::artifacts::write_text_file(layout.run_manifest_json, failed_manifest);
+            db.insert_event(
+                {
+                    config.run_id,
+                    "error",
+                    "run_failed",
+                    error.what(),
+                    "{}",
+                    failed_at
+                }
+            );
+            db.finalize_run(config.run_id, "failed", failed_at, error_summary);
+        } catch (...) {
+        }
+        throw;
+    } catch (...) {
+        const auto failed_at = common::now_utc_iso8601();
+        const std::string error_summary = "{\"status\":\"failed\",\"run_id\":\"" + common::json_escape(config.run_id) +
+            "\",\"error\":\"unknown\"}";
+        try {
+            const auto failed_manifest = infrastructure::artifacts::render_run_manifest_json(
+                {
+                    config.run_id,
+                    "eval",
+                    config.environment,
+                    started_at,
+                    failed_at,
+                    "failed",
+                    domain::config::to_json(config),
+                    {
+                        {"run_dir", layout.run_dir},
+                        {"evaluation_summary_json", layout.eval_summary_json}
+                    },
+                    checkpoint_path.string(),
+                    "unknown"
+                }
+            );
+            infrastructure::artifacts::write_text_file(layout.run_manifest_json, failed_manifest);
+            db.finalize_run(config.run_id, "failed", failed_at, error_summary);
+        } catch (...) {
+        }
         throw;
     }
 }

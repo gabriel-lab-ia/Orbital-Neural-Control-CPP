@@ -12,6 +12,7 @@
 #include "domain/env/environment_factory.h"
 #include "domain/ppo/policy_value_model.h"
 #include "domain/ppo/ppo_types.h"
+#include "domain/ppo/rollout_buffer.h"
 
 namespace nmc::domain::ppo {
 
@@ -39,6 +40,7 @@ private:
 
     config::TrainerConfig config_;
     torch::Device device_{torch::kCPU};
+    RolloutBuffer rollout_buffer_;
     PolicyValueModel model_{nullptr};
     std::unique_ptr<torch::optim::Adam> optimizer_;
 

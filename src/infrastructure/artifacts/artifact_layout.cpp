@@ -1,6 +1,8 @@
 #include "infrastructure/artifacts/artifact_layout.h"
 
+#include <chrono>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 namespace nmc::infrastructure::artifacts {
@@ -15,6 +17,13 @@ bool is_same_path(const std::filesystem::path& lhs, const std::filesystem::path&
         return false;
     }
     return lhs_abs.lexically_normal() == rhs_abs.lexically_normal();
+}
+
+std::filesystem::path make_temp_path_for(const std::filesystem::path& destination) {
+    const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+    std::ostringstream stream;
+    stream << destination.filename().string() << ".tmp." << now;
+    return destination.parent_path() / stream.str();
 }
 
 }  // namespace
@@ -55,15 +64,39 @@ ArtifactLayout make_layout(const std::filesystem::path& root, const std::string&
 
 void write_text_file(const std::filesystem::path& path, const std::string& content) {
     std::filesystem::create_directories(path.parent_path());
-    std::ofstream stream(path, std::ios::out | std::ios::trunc);
+    const auto temp_path = make_temp_path_for(path);
+    std::ofstream stream(temp_path, std::ios::out | std::ios::trunc | std::ios::binary);
     if (!stream.is_open()) {
-        throw std::runtime_error("unable to open file: " + path.string());
+        throw std::runtime_error("unable to open file: " + temp_path.string());
     }
     stream << content;
+    if (!stream.good()) {
+        throw std::runtime_error("failed to write file: " + temp_path.string());
+    }
+    stream.flush();
+    stream.close();
+
+    std::error_code rename_error;
+    std::filesystem::rename(temp_path, path, rename_error);
+    if (!rename_error) {
+        return;
+    }
+
+    std::error_code remove_error;
+    std::filesystem::remove(path, remove_error);
+    rename_error.clear();
+    std::filesystem::rename(temp_path, path, rename_error);
+    if (rename_error) {
+        std::error_code cleanup_error;
+        std::filesystem::remove(temp_path, cleanup_error);
+        throw std::runtime_error(
+            "failed to atomically replace file: " + path.string() + " (" + rename_error.message() + ")"
+        );
+    }
 }
 
 bool is_readable_file(const std::filesystem::path& path) {
-    std::ifstream stream(path);
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
     return stream.good();
 }
 

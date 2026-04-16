@@ -40,7 +40,7 @@ These modules are intentionally separated from the baseline runtime so they can 
 - `training/`: Python orchestration and pybind11 binding.
 - `mlops/`: MLflow tracking, ONNX export, model registration scripts.
 - `backend/`: C++ REST/WebSocket telemetry service.
-- `frontend/`: Next.js mission dashboard prototype.
+- `frontend/`: React + TypeScript + Vite mission dashboard prototype.
 
 These modules are useful for integration and future productization, but they are not required to build or validate the baseline runtime.
 

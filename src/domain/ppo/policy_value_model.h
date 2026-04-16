@@ -6,6 +6,9 @@
 
 #include <torch/torch.h>
 
+#include "domain/ppo/gaussian_policy.h"
+#include "domain/ppo/value_network.h"
+
 namespace nmc::domain::ppo {
 
 struct PolicyOutput {
@@ -36,16 +39,8 @@ public:
     float policy_std_scalar();
 
 private:
-    std::pair<torch::Tensor, torch::Tensor> policy_distribution(
-        const torch::Tensor& observations
-    );
-    torch::Tensor encode(const torch::Tensor& observations);
-
-    torch::nn::Linear encoder_input_{nullptr};
-    torch::nn::Linear encoder_hidden_{nullptr};
-    torch::nn::Linear actor_mean_{nullptr};
-    torch::nn::Linear critic_{nullptr};
-    torch::Tensor log_std_;
+    GaussianPolicy policy_{nullptr};
+    ValueNetwork value_network_{nullptr};
     int64_t observation_dim_ = 0;
     int64_t action_dim_ = 0;
     int64_t hidden_dim_ = 0;

@@ -1,39 +1,63 @@
 #include "interfaces/cli/command_line.h"
 
+#include <charconv>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #include "application/benchmark_runner.h"
 #include "application/evaluation_runner.h"
 #include "application/training_runner.h"
+#include "domain/config/config_validation.h"
+#include "domain/env/environment_factory.h"
+#include "domain/inference/inference_backend_factory.h"
 
 namespace nmc::interfaces::cli {
 namespace {
 
 int64_t parse_int64(const std::string& name, const std::string& value) {
-    try {
-        return std::stoll(value);
-    } catch (const std::exception&) {
+    int64_t out = 0;
+    const auto* begin = value.data();
+    const auto* end = begin + value.size();
+    const auto [ptr, error] = std::from_chars(begin, end, out);
+    if (error != std::errc{} || ptr != end) {
         throw std::runtime_error("invalid integer for " + name + ": " + value);
     }
+    return out;
 }
 
 float parse_float(const std::string& name, const std::string& value) {
+    std::size_t consumed = 0;
     try {
-        return std::stof(value);
+        const float parsed = std::stof(value, &consumed);
+        if (consumed != value.size()) {
+            throw std::runtime_error("invalid float for " + name + ": " + value);
+        }
+        return parsed;
     } catch (const std::exception&) {
         throw std::runtime_error("invalid float for " + name + ": " + value);
     }
 }
 
+std::string lowercase(const std::string_view value) {
+    std::string normalized;
+    normalized.reserve(value.size());
+    for (const char ch : value) {
+        normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+    }
+    return normalized;
+}
+
 bool parse_bool(const std::string& name, const std::string& value) {
-    if (value == "1" || value == "true" || value == "TRUE" || value == "on") {
+    const auto normalized = lowercase(value);
+    if (normalized == "1" || normalized == "true" || normalized == "on" || normalized == "yes") {
         return true;
     }
-    if (value == "0" || value == "false" || value == "FALSE" || value == "off") {
+    if (normalized == "0" || normalized == "false" || normalized == "off" || normalized == "no") {
         return false;
     }
     throw std::runtime_error("invalid bool for " + name + ": " + value);
@@ -54,7 +78,8 @@ void print_usage() {
         << "  nmc eval [options]\n"
         << "  nmc benchmark [--quick|--full] [--seed N] [--name NAME]\n\n"
         << "Train options:\n"
-        << "  --env <point_mass|mujoco_cartpole>\n"
+        << "  --env <" << domain::env::supported_environment_kinds() << ">\n"
+        << "  --quick\n"
         << "  --seed <int>\n"
         << "  --num-envs <int>\n"
         << "  --updates <int>\n"
@@ -67,17 +92,39 @@ void print_usage() {
         << "  --resume-checkpoint <path>\n"
         << "  --live-steps <int>\n"
         << "  --deterministic-live <bool>\n"
-        << "  --mujoco-model <path>\n\n"
+        << "  --mujoco-model <path>\n"
+        << "  --pm-pos-log-w <float>\n"
+        << "  --pm-pos-exp-w <float>\n"
+        << "  --pm-vel-align-w <float>\n"
+        << "  --pm-vel-error-w <float>\n"
+        << "  --pm-control-w <float>\n"
+        << "  --pm-risk-w <float>\n"
+        << "  --pm-potential-shaping <bool>\n"
+        << "  --help\n\n"
         << "Eval options:\n"
         << "  --checkpoint <path>\n"
-        << "  --env <point_mass|mujoco_cartpole>\n"
+        << "  --env <" << domain::env::supported_environment_kinds() << ">\n"
         << "  --episodes <int>\n"
         << "  --max-steps <int>\n"
         << "  --seed <int>\n"
-        << "  --backend <libtorch|tensorrt>\n"
+        << "  --backend <" << domain::inference::supported_inference_backends() << ">\n"
         << "  --deterministic <bool>\n"
         << "  --run-id <string>\n"
-        << "  --mujoco-model <path>\n";
+        << "  --mujoco-model <path>\n"
+        << "  --pm-pos-log-w <float>\n"
+        << "  --pm-pos-exp-w <float>\n"
+        << "  --pm-vel-align-w <float>\n"
+        << "  --pm-vel-error-w <float>\n"
+        << "  --pm-control-w <float>\n"
+        << "  --pm-risk-w <float>\n"
+        << "  --pm-potential-shaping <bool>\n"
+        << "  --help\n\n"
+        << "Benchmark options:\n"
+        << "  --quick | --smoke\n"
+        << "  --full\n"
+        << "  --seed <int>\n"
+        << "  --name <string>\n"
+        << "  --help\n";
 }
 
 int run_train(const int argc, char** argv) {
@@ -87,6 +134,13 @@ int run_train(const int argc, char** argv) {
         const std::string arg = argv[index];
         if (arg == "--env") {
             config.environment = require_value(argc, argv, index, arg);
+        } else if (arg == "--quick") {
+            config.trainer.num_envs = 4;
+            config.trainer.total_updates = 3;
+            config.trainer.ppo.rollout_steps = 32;
+            config.trainer.ppo.ppo_epochs = 2;
+            config.trainer.ppo.minibatch_size = 64;
+            config.live_rollout_steps = 48;
         } else if (arg == "--seed") {
             config.trainer.seed = parse_int64(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--num-envs") {
@@ -113,6 +167,29 @@ int run_train(const int argc, char** argv) {
             config.deterministic_live_rollout = parse_bool(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--mujoco-model") {
             config.mujoco_model_path = std::filesystem::path(require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-pos-log-w") {
+            config.point_mass_reward.position_log_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-pos-exp-w") {
+            config.point_mass_reward.position_exp_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-vel-align-w") {
+            config.point_mass_reward.velocity_alignment_weight = parse_float(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--pm-vel-error-w") {
+            config.point_mass_reward.velocity_error_weight = parse_float(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--pm-control-w") {
+            config.point_mass_reward.control_quadratic_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-risk-w") {
+            config.point_mass_reward.corridor_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-potential-shaping") {
+            config.point_mass_reward.potential_shaping_enabled = parse_bool(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
         } else if (arg == "--help" || arg == "-h") {
             print_usage();
             return 0;
@@ -121,6 +198,7 @@ int run_train(const int argc, char** argv) {
         }
     }
 
+    domain::config::validate_train_config_or_throw(config);
     application::TrainingRunner runner;
     static_cast<void>(runner.run(config));
     return 0;
@@ -149,6 +227,29 @@ int run_eval(const int argc, char** argv) {
             config.run_id = require_value(argc, argv, index, arg);
         } else if (arg == "--mujoco-model") {
             config.mujoco_model_path = std::filesystem::path(require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-pos-log-w") {
+            config.point_mass_reward.position_log_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-pos-exp-w") {
+            config.point_mass_reward.position_exp_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-vel-align-w") {
+            config.point_mass_reward.velocity_alignment_weight = parse_float(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--pm-vel-error-w") {
+            config.point_mass_reward.velocity_error_weight = parse_float(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--pm-control-w") {
+            config.point_mass_reward.control_quadratic_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-risk-w") {
+            config.point_mass_reward.corridor_weight = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--pm-potential-shaping") {
+            config.point_mass_reward.potential_shaping_enabled = parse_bool(
+                arg,
+                require_value(argc, argv, index, arg)
+            );
         } else if (arg == "--help" || arg == "-h") {
             print_usage();
             return 0;
@@ -157,6 +258,7 @@ int run_eval(const int argc, char** argv) {
         }
     }
 
+    domain::config::validate_eval_config_or_throw(config);
     application::EvaluationRunner runner;
     static_cast<void>(runner.run(config));
     return 0;
@@ -183,6 +285,7 @@ int run_benchmark(const int argc, char** argv) {
         }
     }
 
+    domain::config::validate_benchmark_config_or_throw(config);
     application::BenchmarkRunner runner;
     static_cast<void>(runner.run(config));
     return 0;

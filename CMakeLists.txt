@@ -28,7 +28,7 @@ option(NMC_ENABLE_ASAN "Enable AddressSanitizer in Debug builds" OFF)
 option(NMC_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer in Debug builds" OFF)
 option(NMC_ENABLE_LTO "Enable link-time optimization in Release-like builds" OFF)
 option(NMC_ENABLE_MUJOCO "Enable MuJoCo environment support" OFF)
-option(NMC_BUILD_ORBITAL_CORE "Build orbital core/control/sim library + tests" ON)
+option(NMC_BUILD_ORBITAL_CORE "Build orbital core/control/sim library + tests" OFF)
 option(NMC_BUILD_ORBITAL_BACKEND "Build orbital backend WebSocket/REST service" OFF)
 
 # -----------------------------------------------------------------------------
@@ -74,14 +74,19 @@ endif()
 
 list(PREPEND CMAKE_PREFIX_PATH "${NMC_TORCH_ROOT}")
 find_package(Torch REQUIRED CONFIG)
-
-find_library(
-    NMC_SQLITE3_LIBRARY
-    NAMES sqlite3 libsqlite3.so.0
-    HINTS /usr/lib /usr/lib/x86_64-linux-gnu /lib /lib/x86_64-linux-gnu
-)
-if(NOT NMC_SQLITE3_LIBRARY)
-    message(FATAL_ERROR "SQLite3 runtime library not found")
+find_package(SQLite3 QUIET)
+if(SQLite3_FOUND)
+    set(NMC_SQLITE_LINK_TARGET SQLite::SQLite3)
+else()
+    find_library(
+        NMC_SQLITE3_LIBRARY
+        NAMES sqlite3 libsqlite3.so.0
+        HINTS /usr/lib /usr/lib/x86_64-linux-gnu /lib /lib/x86_64-linux-gnu
+    )
+    if(NOT NMC_SQLITE3_LIBRARY)
+        message(FATAL_ERROR "SQLite3 runtime library not found")
+    endif()
+    set(NMC_SQLITE_LINK_TARGET "${NMC_SQLITE3_LIBRARY}")
 endif()
 
 # -----------------------------------------------------------------------------
@@ -157,25 +162,34 @@ message(STATUS "  NMC_EIGEN_ROOT: ${NMC_EIGEN_ROOT}")
 message(STATUS "  NMC_ENABLE_MUJOCO: ${NMC_ENABLE_MUJOCO}")
 message(STATUS "  NMC_BUILD_ORBITAL_CORE: ${NMC_BUILD_ORBITAL_CORE}")
 message(STATUS "  NMC_BUILD_ORBITAL_BACKEND: ${NMC_BUILD_ORBITAL_BACKEND}")
-message(STATUS "  SQLite library: ${NMC_SQLITE3_LIBRARY}")
+if(SQLite3_FOUND)
+    message(STATUS "  SQLite3 version: ${SQLite3_VERSION}")
+else()
+    message(STATUS "  SQLite3 library: ${NMC_SQLITE3_LIBRARY}")
+endif()
 message(STATUS "  Primary CLI target: nmc")
 
 # -----------------------------------------------------------------------------
 # Baseline runtime target: nmc
 # -----------------------------------------------------------------------------
-set(NMC_BASELINE_SOURCES
+set(NMC_RUNTIME_SOURCES
     src/common/json_utils.cpp
     src/common/time_utils.cpp
     src/domain/config/experiment_config.cpp
+    src/domain/config/config_validation.cpp
     src/domain/env/environment_factory.cpp
     src/domain/env/point_mass_env.cpp
+    src/domain/ppo/gaussian_policy.cpp
     src/domain/ppo/policy_value_model.cpp
+    src/domain/ppo/rollout_buffer.cpp
     src/domain/ppo/trainer.cpp
+    src/domain/ppo/value_network.cpp
     src/domain/inference/inference_backend_factory.cpp
     src/domain/inference/libtorch_policy_backend.cpp
     src/domain/inference/tensorrt_policy_backend_stub.cpp
     src/infrastructure/artifacts/artifact_layout.cpp
     src/infrastructure/artifacts/checkpoint_manager.cpp
+    src/infrastructure/artifacts/run_manifest.cpp
     src/infrastructure/persistence/sqlite_experiment_store.cpp
     src/infrastructure/reporting/live_rollout_writer.cpp
     src/infrastructure/reporting/metrics_csv_writer.cpp
@@ -183,7 +197,6 @@ set(NMC_BASELINE_SOURCES
     src/application/evaluation_runner.cpp
     src/application/training_runner.cpp
     src/interfaces/cli/command_line.cpp
-    src/interfaces/cli/main.cpp
 )
 
 if(NMC_ENABLE_MUJOCO)
@@ -212,26 +225,45 @@ if(NMC_ENABLE_MUJOCO)
         message(FATAL_ERROR "MuJoCo requested but not found. Set NMC_MUJOCO_ROOT or MUJOCO_ROOT.")
     endif()
 
-    list(APPEND NMC_BASELINE_SOURCES src/domain/env/mujoco_cartpole_env.cpp)
+    list(APPEND NMC_RUNTIME_SOURCES src/domain/env/mujoco_cartpole_env.cpp)
 endif()
 
-add_executable(nmc)
-target_sources(nmc PRIVATE ${NMC_BASELINE_SOURCES})
-target_compile_features(nmc PRIVATE cxx_std_20)
+add_library(nmc_runtime STATIC)
+target_sources(nmc_runtime PRIVATE ${NMC_RUNTIME_SOURCES})
+target_compile_features(nmc_runtime PUBLIC cxx_std_20)
 
 target_include_directories(
-    nmc SYSTEM PRIVATE
+    nmc_runtime PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/rl/include"
+)
+target_include_directories(
+    nmc_runtime SYSTEM PRIVATE
     "${NMC_EIGEN_ROOT}"
     "${TORCH_INCLUDE_DIRS}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-target_link_libraries(nmc PRIVATE "${TORCH_LIBRARIES}" "${NMC_SQLITE3_LIBRARY}")
+target_link_libraries(nmc_runtime PUBLIC "${TORCH_LIBRARIES}" "${NMC_SQLITE_LINK_TARGET}")
+
+if(TORCH_CXX_FLAGS)
+    separate_arguments(TORCH_CXX_FLAGS_LIST NATIVE_COMMAND "${TORCH_CXX_FLAGS}")
+    target_compile_options(nmc_runtime PRIVATE ${TORCH_CXX_FLAGS_LIST})
+endif()
+
+nmc_apply_warning_profile(nmc_runtime)
+nmc_apply_security_profile(nmc_runtime)
+nmc_apply_sanitizers(nmc_runtime)
+
+add_executable(nmc)
+target_sources(nmc PRIVATE src/interfaces/cli/main.cpp)
+target_compile_features(nmc PRIVATE cxx_std_20)
+target_include_directories(nmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(nmc PRIVATE nmc_runtime)
 
 if(NMC_ENABLE_MUJOCO)
-    target_include_directories(nmc SYSTEM PRIVATE "${MUJOCO_INCLUDE_DIR}")
-    target_link_libraries(nmc PRIVATE "${MUJOCO_LIBRARY}")
-    target_compile_definitions(nmc PRIVATE NMC_ENABLE_MUJOCO=1)
+    target_include_directories(nmc_runtime SYSTEM PRIVATE "${MUJOCO_INCLUDE_DIR}")
+    target_link_libraries(nmc_runtime PRIVATE "${MUJOCO_LIBRARY}")
+    target_compile_definitions(nmc_runtime PRIVATE NMC_ENABLE_MUJOCO=1)
 
     get_filename_component(MUJOCO_LIBRARY_DIR "${MUJOCO_LIBRARY}" DIRECTORY)
     set_target_properties(
@@ -248,11 +280,6 @@ set_target_properties(
         OUTPUT_NAME "nmc"
         POSITION_INDEPENDENT_CODE ON
 )
-
-if(TORCH_CXX_FLAGS)
-    separate_arguments(TORCH_CXX_FLAGS_LIST NATIVE_COMMAND "${TORCH_CXX_FLAGS}")
-    target_compile_options(nmc PRIVATE ${TORCH_CXX_FLAGS_LIST})
-endif()
 
 nmc_apply_warning_profile(nmc)
 nmc_apply_security_profile(nmc)

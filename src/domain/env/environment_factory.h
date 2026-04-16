@@ -5,15 +5,28 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "domain/env/environment.h"
+#include "domain/env/point_mass_reward.h"
 
 namespace nmc::domain::env {
 
+enum class EnvironmentKind {
+    kPointMass,
+    kMuJoCoCartPole
+};
+
+std::optional<EnvironmentKind> try_parse_environment_kind(std::string_view value);
+EnvironmentKind parse_environment_kind_or_throw(std::string_view value);
+std::string environment_kind_to_string(EnvironmentKind kind);
+std::string supported_environment_kinds();
+
 struct EnvironmentSpec {
-    std::string kind = "point_mass";
+    EnvironmentKind kind = EnvironmentKind::kPointMass;
     std::optional<std::filesystem::path> mujoco_model_path;
+    std::optional<PointMassRewardConfig> point_mass_reward;
 };
 
 struct EnvironmentPack {

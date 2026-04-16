@@ -2,36 +2,33 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
+#include <concepts>
 #include <iomanip>
-#include <numeric>
 #include <ostream>
+#include <ranges>
+#include <type_traits>
+#include <vector>
 
 namespace nmc::domain::ppo {
 namespace {
 
-float mean_or_zero(const std::vector<float>& values) {
-    if (values.empty()) {
+template <typename Range>
+concept ArithmeticRange =
+    std::ranges::input_range<Range> &&
+    std::is_arithmetic_v<std::remove_cvref_t<std::ranges::range_value_t<Range>>>;
+
+template <ArithmeticRange Range>
+float mean_or_zero(const Range& values) {
+    const auto count = static_cast<float>(std::ranges::distance(values));
+    if (count <= 0.0f) {
         return 0.0f;
     }
 
-    const float sum = std::accumulate(values.begin(), values.end(), 0.0f);
-    return sum / static_cast<float>(values.size());
-}
-
-float mean_or_zero(const std::vector<int64_t>& values) {
-    if (values.empty()) {
-        return 0.0f;
+    double sum = 0.0;
+    for (const auto value : values) {
+        sum += static_cast<double>(value);
     }
-
-    const auto sum = std::accumulate(values.begin(), values.end(), int64_t{0});
-    return static_cast<float>(sum) / static_cast<float>(values.size());
-}
-
-torch::Tensor normalize_advantages(const torch::Tensor& advantages) {
-    const auto centered = advantages - advantages.mean();
-    const auto scale = centered.std(false).clamp_min(1.0e-6);
-    return centered / scale;
+    return static_cast<float>(sum / static_cast<double>(count));
 }
 
 float explained_variance_score(const torch::Tensor& predictions, const torch::Tensor& targets) {
@@ -45,7 +42,15 @@ float explained_variance_score(const torch::Tensor& predictions, const torch::Te
 }  // namespace
 
 PPOTrainer::PPOTrainer(config::TrainerConfig config, env::EnvironmentPack environment_pack)
-    : config_(std::move(config)), model_(nullptr) {
+    : config_(std::move(config)),
+      rollout_buffer_(
+          config_.ppo.rollout_steps,
+          config_.num_envs,
+          environment_pack.observation_dim,
+          environment_pack.action_dim,
+          device_
+      ),
+      model_(nullptr) {
     torch::manual_seed(static_cast<uint64_t>(config_.seed));
     if (config_.torch_num_threads > 0) {
         torch::set_num_threads(static_cast<int>(config_.torch_num_threads));
@@ -189,50 +194,30 @@ int64_t PPOTrainer::action_dim() const {
 }
 
 RolloutBatch PPOTrainer::collect_rollout() {
-    std::vector<torch::Tensor> observations;
-    std::vector<torch::Tensor> actions;
-    std::vector<torch::Tensor> log_probs;
-    std::vector<torch::Tensor> rewards;
-    std::vector<torch::Tensor> dones;
-    std::vector<torch::Tensor> values;
-
-    observations.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    actions.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    log_probs.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    rewards.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    dones.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    values.reserve(static_cast<std::size_t>(config_.ppo.rollout_steps));
-
     model_->eval();
+    rollout_buffer_.reset();
+
+    std::vector<float> reward_values(static_cast<std::size_t>(config_.num_envs), 0.0f);
+    std::vector<float> done_values(static_cast<std::size_t>(config_.num_envs), 0.0f);
 
     for (int64_t step = 0; step < config_.ppo.rollout_steps; ++step) {
         auto observation_batch = stack_observations().to(device_);
         const auto policy = model_->act(observation_batch, false);
 
-        observations.push_back(observation_batch);
-        actions.push_back(policy.action.detach());
-        log_probs.push_back(policy.log_prob.detach());
-        values.push_back(policy.value.detach());
-
         std::vector<torch::Tensor> next_observations;
-        std::vector<float> reward_values;
-        std::vector<float> done_values;
-
         next_observations.reserve(static_cast<std::size_t>(config_.num_envs));
-        reward_values.reserve(static_cast<std::size_t>(config_.num_envs));
-        done_values.reserve(static_cast<std::size_t>(config_.num_envs));
 
-        const int64_t step_env_count = config_.num_envs;
-        const int64_t next_total_steps = total_env_steps_ + step_env_count;
+        const auto step_env_count = static_cast<int64_t>(environments_.size());
+        const auto next_total_steps = total_env_steps_ + step_env_count;
 
-        for (int64_t env_index = 0; env_index < config_.num_envs; ++env_index) {
+        for (int64_t env_index = 0; env_index < step_env_count; ++env_index) {
             auto result = environments_[static_cast<std::size_t>(env_index)]->step(
                 policy.action[env_index].to(torch::kCPU)
             );
 
             const bool done = result.terminated || result.truncated;
-            reward_values.push_back(result.reward);
-            done_values.push_back(done ? 1.0f : 0.0f);
+            reward_values[static_cast<std::size_t>(env_index)] = result.reward;
+            done_values[static_cast<std::size_t>(env_index)] = done ? 1.0f : 0.0f;
             episode_returns_[static_cast<std::size_t>(env_index)] += result.reward;
             episode_lengths_[static_cast<std::size_t>(env_index)] += 1;
 
@@ -262,46 +247,22 @@ RolloutBatch PPOTrainer::collect_rollout() {
             }
         }
 
+        rollout_buffer_.add_step(
+            step,
+            observation_batch.detach(),
+            policy.action.detach(),
+            policy.log_prob.detach(),
+            policy.value.detach(),
+            std::span<const float>(reward_values),
+            std::span<const float>(done_values)
+        );
+
         current_observations_ = std::move(next_observations);
-        rewards.push_back(torch::tensor(reward_values, torch::TensorOptions().dtype(torch::kFloat32)).to(device_));
-        dones.push_back(torch::tensor(done_values, torch::TensorOptions().dtype(torch::kFloat32)).to(device_));
-        total_env_steps_ += config_.num_envs;
+        total_env_steps_ += step_env_count;
     }
 
     const auto last_values = model_->values(stack_observations().to(device_)).detach();
-    auto advantages = torch::zeros_like(last_values);
-    std::vector<torch::Tensor> advantage_steps(static_cast<std::size_t>(config_.ppo.rollout_steps));
-    std::vector<torch::Tensor> return_steps(static_cast<std::size_t>(config_.ppo.rollout_steps));
-
-    for (int64_t step = config_.ppo.rollout_steps - 1; step >= 0; --step) {
-        const auto mask = 1.0f - dones[static_cast<std::size_t>(step)];
-        const auto next_value =
-            step == config_.ppo.rollout_steps - 1
-                ? last_values
-                : values[static_cast<std::size_t>(step + 1)];
-        const auto delta =
-            rewards[static_cast<std::size_t>(step)] +
-            config_.ppo.gamma * next_value * mask -
-            values[static_cast<std::size_t>(step)];
-
-        advantages =
-            delta +
-            (config_.ppo.gamma * config_.ppo.gae_lambda) * mask * advantages;
-
-        advantage_steps[static_cast<std::size_t>(step)] = advantages;
-        return_steps[static_cast<std::size_t>(step)] =
-            advantages + values[static_cast<std::size_t>(step)];
-    }
-
-    return {
-        torch::cat(observations).detach(),
-        torch::cat(actions).detach(),
-        torch::cat(log_probs).detach(),
-        torch::cat(rewards).detach(),
-        torch::cat(return_steps).detach(),
-        normalize_advantages(torch::cat(advantage_steps).detach()),
-        torch::cat(values).detach()
-    };
+    return rollout_buffer_.build_batch(last_values, config_.ppo.gamma, config_.ppo.gae_lambda);
 }
 
 TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64_t update_index) {
@@ -328,11 +289,14 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
             break;
         }
 
-        auto permutation = torch::randperm(sample_count, torch::TensorOptions().dtype(torch::kInt64));
+        auto permutation = torch::randperm(
+            sample_count,
+            torch::TensorOptions().dtype(torch::kInt64).device(torch::kCPU)
+        );
 
         for (int64_t start = 0; start < sample_count; start += config_.ppo.minibatch_size) {
-            const auto stop = std::min(start + config_.ppo.minibatch_size, sample_count);
-            const auto indices = permutation.slice(0, start, stop);
+            const auto minibatch_stop = std::min(start + config_.ppo.minibatch_size, sample_count);
+            const auto indices = permutation.narrow(0, start, minibatch_stop - start);
 
             const auto obs = batch.observations.index_select(0, indices);
             const auto actions = batch.actions.index_select(0, indices);
@@ -405,28 +369,31 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
     }
 
     const int64_t metric_window = std::min<int64_t>(20, static_cast<int64_t>(finished_returns_.size()));
-    std::vector<float> reward_window;
-    std::vector<int64_t> length_window;
-    std::vector<float> success_window;
+    float avg_episode_return = 0.0f;
+    float avg_episode_length = 0.0f;
+    float success_rate = 0.0f;
 
     if (metric_window > 0) {
-        reward_window.assign(
+        const auto reward_window = std::ranges::subrange(
             finished_returns_.end() - metric_window,
             finished_returns_.end()
         );
-        length_window.assign(
+        const auto length_window = std::ranges::subrange(
             finished_lengths_.end() - metric_window,
             finished_lengths_.end()
         );
-        success_window.assign(
+        const auto success_window = std::ranges::subrange(
             finished_successes_.end() - metric_window,
             finished_successes_.end()
         );
+
+        avg_episode_return = mean_or_zero(reward_window);
+        avg_episode_length = mean_or_zero(length_window);
+        success_rate = mean_or_zero(success_window);
     }
 
     const auto predicted_values = model_->values(batch.observations).detach();
     const float step_reward = batch.rewards.mean().item<float>();
-    const float success_rate = mean_or_zero(success_window);
 
     return {
         update_index,
@@ -437,8 +404,8 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
         last_approx_kl,
         last_clip_fraction,
         step_reward,
-        mean_or_zero(reward_window),
-        mean_or_zero(length_window),
+        avg_episode_return,
+        avg_episode_length,
         success_rate,
         last_action_std,
         explained_variance_score(predicted_values, batch.returns),

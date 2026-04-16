@@ -1,0 +1,50 @@
+# Git metadata
+.git
+.gitignore
+.github
+
+# Host build caches and generated state
+build/
+build-ci/
+build-orbital/
+build-orbital-core/
+cmake-build-*/
+**/CMakeCache.txt
+**/CMakeFiles/
+**/*.cmake.user
+compile_commands.json
+
+# Runtime artifacts and experiment outputs
+artifacts/
+checkpoints/
+runs/
+logs/
+mlruns/
+
+# Python caches
+**/__pycache__/
+**/*.pyc
+.venv/
+venv/
+
+# Frontend cache/node artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.turbo/
+
+# IDE/OS noise
+.vscode/
+.idea/
+.DS_Store
+
+# Large optional local dependencies
+lib/libtorch/
+
+# Credentials / local env files
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12

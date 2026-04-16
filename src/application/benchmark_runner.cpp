@@ -10,6 +10,7 @@
 #include "application/training_runner.h"
 #include "common/json_utils.h"
 #include "common/time_utils.h"
+#include "domain/config/config_validation.h"
 #include "infrastructure/artifacts/artifact_layout.h"
 #include "infrastructure/persistence/sqlite_experiment_store.h"
 
@@ -81,99 +82,116 @@ BenchmarkRunner::BenchmarkRunner(std::filesystem::path artifact_root)
     : artifact_root_(std::move(artifact_root)) {}
 
 BenchmarkRunOutput BenchmarkRunner::run(const domain::config::BenchmarkConfig& config) {
+    domain::config::validate_benchmark_config_or_throw(config);
     const auto benchmark_id = common::make_run_id(config.benchmark_name);
-
-    domain::config::TrainConfig train_config;
-    train_config.run_id = common::make_run_id("bench_train");
-    train_config.environment = "point_mass";
-    train_config.trainer.seed = config.seed;
-    train_config.trainer.num_envs = config.quick ? 4 : 8;
-    train_config.trainer.total_updates = config.quick ? 3 : 6;
-    train_config.trainer.hidden_dim = 64;
-    train_config.trainer.benchmark_iterations = config.quick ? 64 : 128;
-    train_config.trainer.checkpoint_interval_updates = 1;
-    train_config.trainer.ppo.rollout_steps = config.quick ? 32 : 64;
-    train_config.trainer.ppo.ppo_epochs = 2;
-    train_config.trainer.ppo.minibatch_size = 64;
-    train_config.live_rollout_steps = config.quick ? 48 : 96;
-
-    TrainingRunner training_runner(artifact_root_);
-    const auto train_run = training_runner.run(train_config);
-
-    domain::config::EvalConfig eval_config;
-    eval_config.run_id = common::make_run_id("bench_eval");
-    eval_config.environment = "point_mass";
-    eval_config.checkpoint_path = train_run.checkpoint_path;
-    eval_config.episodes = config.quick ? 4 : 8;
-    eval_config.max_steps = 120;
-    eval_config.seed = config.seed;
-    eval_config.deterministic_policy = true;
-    eval_config.inference_backend = "libtorch";
-
-    EvaluationRunner evaluation_runner(artifact_root_);
-    const auto eval_run = evaluation_runner.run(eval_config);
-
-    const std::vector<std::filesystem::path> required_artifacts = {
-        train_run.manifest_path,
-        train_run.training_summary_path,
-        train_run.checkpoint_path,
-        train_run.checkpoint_meta_path,
-        eval_run.manifest_path,
-        eval_run.evaluation_summary_path
-    };
-
-    bool artifacts_valid = true;
-    for (const auto& artifact : required_artifacts) {
-        if (!infrastructure::artifacts::is_readable_file(artifact)) {
-            artifacts_valid = false;
-            break;
-        }
-    }
-
-    if (!artifacts_valid) {
-        throw std::runtime_error("benchmark validation failed: required artifacts are missing or unreadable");
-    }
-
-    const auto benchmark_json_path = artifact_root_ / "benchmarks" / (benchmark_id + ".json");
-    const auto benchmark_csv_path = artifact_root_ / "benchmarks" / (benchmark_id + ".csv");
-
-    const auto json_content = benchmark_json(
-        benchmark_id,
-        config,
-        train_run,
-        eval_run,
-        artifacts_valid,
-        required_artifacts
-    );
-    const auto csv_content = benchmark_csv(benchmark_id, train_run, eval_run, artifacts_valid);
-
-    infrastructure::artifacts::write_text_file(benchmark_json_path, json_content);
-    infrastructure::artifacts::write_text_file(benchmark_csv_path, csv_content);
-    infrastructure::artifacts::write_text_file(artifact_root_ / "benchmarks" / "latest.json", json_content);
-    infrastructure::artifacts::write_text_file(artifact_root_ / "benchmarks" / "latest.csv", csv_content);
-
+    const auto started_at = common::now_utc_iso8601();
     infrastructure::persistence::SQLiteExperimentStore db(artifact_root_ / "experiments.sqlite");
     db.initialize();
-    db.insert_benchmark(
-        {
-            config.benchmark_name,
-            train_run.run_id,
-            json_content,
-            common::now_utc_iso8601()
+
+    try {
+        domain::config::TrainConfig train_config;
+        train_config.run_id = common::make_run_id("bench_train");
+        train_config.environment = "point_mass";
+        train_config.trainer.seed = config.seed;
+        train_config.trainer.num_envs = config.quick ? 4 : 8;
+        train_config.trainer.total_updates = config.quick ? 3 : 6;
+        train_config.trainer.hidden_dim = 64;
+        train_config.trainer.benchmark_iterations = config.quick ? 64 : 128;
+        train_config.trainer.checkpoint_interval_updates = 1;
+        train_config.trainer.ppo.rollout_steps = config.quick ? 32 : 64;
+        train_config.trainer.ppo.ppo_epochs = 2;
+        train_config.trainer.ppo.minibatch_size = 64;
+        train_config.live_rollout_steps = config.quick ? 48 : 96;
+
+        TrainingRunner training_runner(artifact_root_);
+        const auto train_run = training_runner.run(train_config);
+
+        domain::config::EvalConfig eval_config;
+        eval_config.run_id = common::make_run_id("bench_eval");
+        eval_config.environment = "point_mass";
+        eval_config.checkpoint_path = train_run.checkpoint_path;
+        eval_config.episodes = config.quick ? 4 : 8;
+        eval_config.max_steps = 120;
+        eval_config.seed = config.seed;
+        eval_config.deterministic_policy = true;
+        eval_config.inference_backend = "libtorch";
+
+        EvaluationRunner evaluation_runner(artifact_root_);
+        const auto eval_run = evaluation_runner.run(eval_config);
+
+        const std::vector<std::filesystem::path> required_artifacts = {
+            train_run.manifest_path,
+            train_run.training_summary_path,
+            train_run.checkpoint_path,
+            train_run.checkpoint_meta_path,
+            eval_run.manifest_path,
+            eval_run.evaluation_summary_path
+        };
+
+        bool artifacts_valid = true;
+        for (const auto& artifact : required_artifacts) {
+            if (!infrastructure::artifacts::is_readable_file(artifact)) {
+                artifacts_valid = false;
+                break;
+            }
         }
-    );
 
-    std::cout << "Benchmark completed: " << benchmark_id << '\n';
-    std::cout << "Benchmark summary: " << benchmark_json_path << '\n';
+        if (!artifacts_valid) {
+            throw std::runtime_error("benchmark validation failed: required artifacts are missing or unreadable");
+        }
 
-    return {
-        benchmark_id,
-        train_run.run_id,
-        eval_run.run_id,
-        benchmark_json_path,
-        benchmark_csv_path,
-        artifacts_valid
-    };
+        const auto benchmark_json_path = artifact_root_ / "benchmarks" / (benchmark_id + ".json");
+        const auto benchmark_csv_path = artifact_root_ / "benchmarks" / (benchmark_id + ".csv");
+
+        const auto json_content = benchmark_json(
+            benchmark_id,
+            config,
+            train_run,
+            eval_run,
+            artifacts_valid,
+            required_artifacts
+        );
+        const auto csv_content = benchmark_csv(benchmark_id, train_run, eval_run, artifacts_valid);
+
+        infrastructure::artifacts::write_text_file(benchmark_json_path, json_content);
+        infrastructure::artifacts::write_text_file(benchmark_csv_path, csv_content);
+        infrastructure::artifacts::write_text_file(artifact_root_ / "benchmarks" / "latest.json", json_content);
+        infrastructure::artifacts::write_text_file(artifact_root_ / "benchmarks" / "latest.csv", csv_content);
+
+        db.insert_benchmark(
+            {
+                config.benchmark_name,
+                benchmark_id,
+                json_content,
+                common::now_utc_iso8601()
+            }
+        );
+
+        std::cout << "Benchmark completed: " << benchmark_id << '\n';
+        std::cout << "Benchmark summary: " << benchmark_json_path << '\n';
+
+        return {
+            benchmark_id,
+            train_run.run_id,
+            eval_run.run_id,
+            benchmark_json_path,
+            benchmark_csv_path,
+            artifacts_valid
+        };
+    } catch (const std::exception& error) {
+        const auto failed_at = common::now_utc_iso8601();
+        db.insert_benchmark(
+            {
+                config.benchmark_name,
+                benchmark_id,
+                "{\"benchmark_id\":\"" + common::json_escape(benchmark_id) + "\",\"status\":\"failed\",\"error\":\"" +
+                    common::json_escape(error.what()) + "\",\"started_at\":\"" + common::json_escape(started_at) +
+                    "\",\"ended_at\":\"" + common::json_escape(failed_at) + "\"}",
+                failed_at
+            }
+        );
+        throw;
+    }
 }
 
 }  // namespace nmc::application

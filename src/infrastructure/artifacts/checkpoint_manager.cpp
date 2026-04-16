@@ -59,14 +59,37 @@ CheckpointMetadata load_checkpoint_metadata(const std::filesystem::path& metadat
         kv[line.substr(0, split)] = line.substr(split + 1);
     }
 
+    const auto read_required = [&](const char* key) -> std::string {
+        const auto it = kv.find(key);
+        if (it == kv.end() || it->second.empty()) {
+            throw std::runtime_error(
+                std::string("checkpoint metadata missing required field '") + key +
+                "' in " + metadata_path.string()
+            );
+        }
+        return it->second;
+    };
+
+    const auto parse_int64 = [&](const char* key) -> int64_t {
+        const auto raw = read_required(key);
+        try {
+            return std::stoll(raw);
+        } catch (const std::exception&) {
+            throw std::runtime_error(
+                std::string("checkpoint metadata field '") + key +
+                "' is not a valid integer in " + metadata_path.string() + ": " + raw
+            );
+        }
+    };
+
     CheckpointMetadata metadata;
-    metadata.run_id = kv["run_id"];
-    metadata.environment = kv["environment"];
-    metadata.observation_dim = std::stoll(kv["observation_dim"]);
-    metadata.action_dim = std::stoll(kv["action_dim"]);
-    metadata.hidden_dim = std::stoll(kv["hidden_dim"]);
-    metadata.seed = std::stoll(kv["seed"]);
-    metadata.created_at = kv["created_at"];
+    metadata.run_id = read_required("run_id");
+    metadata.environment = read_required("environment");
+    metadata.observation_dim = parse_int64("observation_dim");
+    metadata.action_dim = parse_int64("action_dim");
+    metadata.hidden_dim = parse_int64("hidden_dim");
+    metadata.seed = parse_int64("seed");
+    metadata.created_at = read_required("created_at");
     return metadata;
 }
 

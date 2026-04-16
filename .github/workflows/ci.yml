@@ -75,7 +75,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: lib/libtorch
-          key: libtorch-cpu-2.2.2-${{ runner.os }}-${{ runner.arch }}
+          key: libtorch-cpu-2.2.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/setup_libtorch_cpu.sh') }}
+          restore-keys: |
+            libtorch-cpu-2.2.2-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Download LibTorch CPU
         run: |
@@ -112,12 +114,51 @@ jobs:
           set -euxo pipefail
           ctest --test-dir build-ci --output-on-failure --verbose --no-tests=error -R nmc_smoke_benchmark
 
-      - name: Validate generated artifacts
+      - name: Validate generated artifacts exist
         run: |
           set -euxo pipefail
           test -f artifacts/benchmarks/latest.json
           test -f artifacts/latest/manifest.json
           test -f artifacts/latest/checkpoint.pt
+          test -f artifacts/latest/checkpoint.meta
+          test -f artifacts/experiments.sqlite
+
+      - name: Validate artifact schema and persistence contract
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          bench_path = Path("artifacts/benchmarks/latest.json")
+          manifest_path = Path("artifacts/latest/manifest.json")
+          db_path = Path("artifacts/experiments.sqlite")
+
+          bench = json.loads(bench_path.read_text(encoding="utf-8"))
+          assert isinstance(bench.get("benchmark_id"), str) and bench["benchmark_id"], "missing benchmark_id"
+          assert bench.get("artifacts_valid") is True, "benchmark artifacts_valid should be true"
+          assert bench.get("quick") in (True, False), "benchmark quick must be boolean"
+          assert isinstance(bench.get("train", {}).get("run_id"), str), "missing train.run_id"
+          assert isinstance(bench.get("eval", {}).get("run_id"), str), "missing eval.run_id"
+
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          assert manifest.get("status") == "completed", "latest manifest should be completed"
+          assert manifest.get("mode") in {"train", "eval"}, "unexpected manifest mode"
+          assert isinstance(manifest.get("config"), dict), "manifest config should be an object"
+          assert isinstance(manifest.get("artifacts"), dict), "manifest artifacts should be an object"
+          assert "run_dir" in manifest["artifacts"], "manifest artifacts missing run_dir"
+
+          conn = sqlite3.connect(db_path)
+          runs = conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
+          episodes = conn.execute("SELECT COUNT(*) FROM episodes").fetchone()[0]
+          benchmarks = conn.execute("SELECT COUNT(*) FROM benchmarks").fetchone()[0]
+          conn.close()
+
+          assert runs >= 2, f"expected at least 2 runs persisted, got {runs}"
+          assert episodes > 0, "expected persisted episodes"
+          assert benchmarks >= 1, "expected at least one benchmark row"
+          PY
 
       - name: Upload smoke artifacts
         uses: actions/upload-artifact@v4
@@ -125,8 +166,11 @@ jobs:
           name: smoke-artifacts
           path: |
             artifacts/benchmarks/latest.json
+            artifacts/benchmarks/latest.csv
             artifacts/latest/manifest.json
             artifacts/latest/checkpoint.pt
+            artifacts/latest/checkpoint.meta
+            artifacts/experiments.sqlite
 
   core-arm64-cross:
     name: core-arm64-cross

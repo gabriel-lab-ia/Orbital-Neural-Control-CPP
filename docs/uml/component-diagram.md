@@ -20,7 +20,7 @@ flowchart LR
     MLFLOW --> MLF[(MLflow tracking store)]
 
     BACKEND[backend/orbital_backend\nREST + WebSocket] --> CORE
-    FRONTEND[frontend/Next.js\nThree.js + charts] --> BACKEND
+    FRONTEND[frontend/React + Vite\nThree.js + charts] --> BACKEND
 
     DB --> SQLITE[(artifacts/experiments.sqlite)]
     ART --> FS[(artifacts/*)]

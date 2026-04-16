@@ -48,6 +48,36 @@ std::string to_json(const TrainerConfig& config) {
     return stream.str();
 }
 
+std::string to_json(const env::PointMassRewardConfig& config) {
+    std::ostringstream stream;
+    stream << '{';
+    stream << "\"position_log_weight\":" << config.position_log_weight << ',';
+    stream << "\"position_log_scale\":" << config.position_log_scale << ',';
+    stream << "\"position_exp_weight\":" << config.position_exp_weight << ',';
+    stream << "\"position_exp_scale\":" << config.position_exp_scale << ',';
+    stream << "\"velocity_alignment_weight\":" << config.velocity_alignment_weight << ',';
+    stream << "\"velocity_error_weight\":" << config.velocity_error_weight << ',';
+    stream << "\"desired_velocity_scale\":" << config.desired_velocity_scale << ',';
+    stream << "\"desired_velocity_limit\":" << config.desired_velocity_limit << ',';
+    stream << "\"control_quadratic_weight\":" << config.control_quadratic_weight << ',';
+    stream << "\"control_soft_weight\":" << config.control_soft_weight << ',';
+    stream << "\"control_soft_threshold\":" << config.control_soft_threshold << ',';
+    stream << "\"control_soft_scale\":" << config.control_soft_scale << ',';
+    stream << "\"corridor_weight\":" << config.corridor_weight << ',';
+    stream << "\"corridor_half_width\":" << config.corridor_half_width << ',';
+    stream << "\"boundary_weight\":" << config.boundary_weight << ',';
+    stream << "\"boundary_soft_margin\":" << config.boundary_soft_margin << ',';
+    stream << "\"efficiency_bonus_weight\":" << config.efficiency_bonus_weight << ',';
+    stream << "\"efficiency_velocity_weight\":" << config.efficiency_velocity_weight << ',';
+    stream << "\"potential_shaping_enabled\":" << bool_to_json(config.potential_shaping_enabled) << ',';
+    stream << "\"potential_position_weight\":" << config.potential_position_weight << ',';
+    stream << "\"potential_velocity_weight\":" << config.potential_velocity_weight << ',';
+    stream << "\"potential_gamma\":" << config.potential_gamma << ',';
+    stream << "\"success_bonus\":" << config.success_bonus;
+    stream << '}';
+    return stream.str();
+}
+
 std::string to_json(const TrainConfig& config) {
     std::ostringstream stream;
     stream << '{';
@@ -65,6 +95,7 @@ std::string to_json(const TrainConfig& config) {
                    ? "\"" + common::json_escape(config.mujoco_model_path->string()) + "\""
                    : "null")
            << ',';
+    stream << "\"point_mass_reward\":" << to_json(config.point_mass_reward) << ',';
     stream << "\"trainer\":" << to_json(config.trainer);
     stream << '}';
     return stream.str();
@@ -84,7 +115,9 @@ std::string to_json(const EvalConfig& config) {
     stream << "\"mujoco_model_path\":"
            << (config.mujoco_model_path.has_value()
                    ? "\"" + common::json_escape(config.mujoco_model_path->string()) + "\""
-                   : "null");
+                   : "null")
+           << ',';
+    stream << "\"point_mass_reward\":" << to_json(config.point_mass_reward);
     stream << '}';
     return stream.str();
 }

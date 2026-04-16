@@ -13,6 +13,12 @@ void check_sqlite_result(const int code, sqlite3* db, const char* context) {
     }
 }
 
+void check_bind_result(const int code, sqlite3* db, const char* context) {
+    if (code != SQLITE_OK) {
+        throw std::runtime_error(std::string(context) + ": " + sqlite3_errmsg(db));
+    }
+}
+
 class Statement final {
 public:
     Statement(sqlite3* db, const char* sql) : db_(db) {
@@ -59,13 +65,14 @@ void SQLiteExperimentStore::execute(const std::string& sql) const {
     if (rc != SQLITE_OK) {
         const std::string message = error != nullptr ? error : "sqlite3_exec failed";
         sqlite3_free(error);
-        throw std::runtime_error(message);
+        throw std::runtime_error(message + " | sql=" + sql);
     }
 }
 
 void SQLiteExperimentStore::initialize() {
     execute("PRAGMA journal_mode=WAL;");
     execute("PRAGMA foreign_keys=ON;");
+    execute("PRAGMA busy_timeout=5000;");
 
     execute(
         "CREATE TABLE IF NOT EXISTS runs ("
@@ -133,14 +140,30 @@ void SQLiteExperimentStore::insert_run_start(const RunStart& run) {
         ") VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
     );
 
-    sqlite3_bind_text(statement.get(), 1, run.run_id.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 2, run.mode.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 3, run.environment.c_str(), -1, sqlite_transient());
-    sqlite3_bind_int64(statement.get(), 4, run.seed);
-    sqlite3_bind_text(statement.get(), 5, run.started_at.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 6, run.status.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 7, run.artifact_dir.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 8, run.config_json.c_str(), -1, sqlite_transient());
+    check_bind_result(sqlite3_bind_text(statement.get(), 1, run.run_id.c_str(), -1, sqlite_transient()), db_, "bind run_id");
+    check_bind_result(sqlite3_bind_text(statement.get(), 2, run.mode.c_str(), -1, sqlite_transient()), db_, "bind mode");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 3, run.environment.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind environment"
+    );
+    check_bind_result(sqlite3_bind_int64(statement.get(), 4, run.seed), db_, "bind seed");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 5, run.started_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind started_at"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 6, run.status.c_str(), -1, sqlite_transient()), db_, "bind status");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 7, run.artifact_dir.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind artifact_dir"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 8, run.config_json.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind config_json"
+    );
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "insert_run_start");
@@ -157,13 +180,24 @@ void SQLiteExperimentStore::finalize_run(
         "UPDATE runs SET ended_at = ?, status = ?, summary_json = ? WHERE run_id = ?;"
     );
 
-    sqlite3_bind_text(statement.get(), 1, ended_at.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 2, status.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 3, summary_json.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 4, run_id.c_str(), -1, sqlite_transient());
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 1, ended_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind ended_at"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 2, status.c_str(), -1, sqlite_transient()), db_, "bind status");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 3, summary_json.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind summary_json"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 4, run_id.c_str(), -1, sqlite_transient()), db_, "bind run_id");
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "finalize_run");
+    if (sqlite3_changes(db_) == 0) {
+        throw std::runtime_error("finalize_run: run_id not found: " + run_id);
+    }
 }
 
 void SQLiteExperimentStore::insert_episode(const EpisodeTelemetry& episode) {
@@ -174,14 +208,26 @@ void SQLiteExperimentStore::insert_episode(const EpisodeTelemetry& episode) {
         ") VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
     );
 
-    sqlite3_bind_text(statement.get(), 1, episode.run_id.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 2, episode.phase.c_str(), -1, sqlite_transient());
-    sqlite3_bind_int64(statement.get(), 3, episode.episode_index);
-    sqlite3_bind_int64(statement.get(), 4, episode.env_steps);
-    sqlite3_bind_double(statement.get(), 5, static_cast<double>(episode.episode_return));
-    sqlite3_bind_int64(statement.get(), 6, episode.episode_length);
-    sqlite3_bind_double(statement.get(), 7, static_cast<double>(episode.success));
-    sqlite3_bind_text(statement.get(), 8, episode.created_at.c_str(), -1, sqlite_transient());
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 1, episode.run_id.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_id"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 2, episode.phase.c_str(), -1, sqlite_transient()), db_, "bind phase");
+    check_bind_result(sqlite3_bind_int64(statement.get(), 3, episode.episode_index), db_, "bind episode_index");
+    check_bind_result(sqlite3_bind_int64(statement.get(), 4, episode.env_steps), db_, "bind env_steps");
+    check_bind_result(
+        sqlite3_bind_double(statement.get(), 5, static_cast<double>(episode.episode_return)),
+        db_,
+        "bind episode_return"
+    );
+    check_bind_result(sqlite3_bind_int64(statement.get(), 6, episode.episode_length), db_, "bind episode_length");
+    check_bind_result(sqlite3_bind_double(statement.get(), 7, static_cast<double>(episode.success)), db_, "bind success");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 8, episode.created_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind created_at"
+    );
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "insert_episode");
@@ -195,12 +241,24 @@ void SQLiteExperimentStore::insert_event(const EventTelemetry& event) {
         ") VALUES (?, ?, ?, ?, ?, ?);"
     );
 
-    sqlite3_bind_text(statement.get(), 1, event.run_id.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 2, event.level.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 3, event.event_type.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 4, event.message.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 5, event.payload_json.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 6, event.created_at.c_str(), -1, sqlite_transient());
+    check_bind_result(sqlite3_bind_text(statement.get(), 1, event.run_id.c_str(), -1, sqlite_transient()), db_, "bind run_id");
+    check_bind_result(sqlite3_bind_text(statement.get(), 2, event.level.c_str(), -1, sqlite_transient()), db_, "bind level");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 3, event.event_type.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind event_type"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 4, event.message.c_str(), -1, sqlite_transient()), db_, "bind message");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 5, event.payload_json.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind payload_json"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 6, event.created_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind created_at"
+    );
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "insert_event");
@@ -212,10 +270,22 @@ void SQLiteExperimentStore::insert_benchmark(const BenchmarkTelemetry& benchmark
         "INSERT INTO benchmarks(benchmark_name, run_id, summary_json, created_at) VALUES (?, ?, ?, ?);"
     );
 
-    sqlite3_bind_text(statement.get(), 1, benchmark.benchmark_name.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 2, benchmark.run_id.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 3, benchmark.summary_json.c_str(), -1, sqlite_transient());
-    sqlite3_bind_text(statement.get(), 4, benchmark.created_at.c_str(), -1, sqlite_transient());
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 1, benchmark.benchmark_name.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind benchmark_name"
+    );
+    check_bind_result(sqlite3_bind_text(statement.get(), 2, benchmark.run_id.c_str(), -1, sqlite_transient()), db_, "bind run_id");
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 3, benchmark.summary_json.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind summary_json"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 4, benchmark.created_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind created_at"
+    );
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "insert_benchmark");

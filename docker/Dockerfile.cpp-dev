@@ -6,10 +6,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
-COPY . .
-RUN bash tools/setup_libtorch_cpu.sh
-RUN cmake --preset dev -DNMC_TORCH_ROOT=/workspace/lib/libtorch -DNMC_ENABLE_MUJOCO=OFF && \
+
+# Install Python deps early for better layer caching.
+COPY mlops/requirements.txt /tmp/mlops-requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/mlops-requirements.txt
+
+# Copy only the baseline build surface.
+COPY CMakeLists.txt CMakePresets.json ./
+COPY src ./src
+COPY tools ./tools
+COPY config ./config
+COPY mlops ./mlops
+COPY lib/eigen-source ./lib/eigen-source
+
+RUN bash tools/setup_libtorch_cpu.sh /workspace/lib
+RUN cmake --preset dev -DNMC_TORCH_ROOT=/workspace/lib/libtorch -DNMC_EIGEN_ROOT=/workspace/lib/eigen-source -DNMC_ENABLE_MUJOCO=OFF && \
     cmake --build --preset build
-RUN python3 -m pip install --no-cache-dir -r mlops/requirements.txt
 
 CMD ["bash"]

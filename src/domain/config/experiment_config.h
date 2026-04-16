@@ -5,6 +5,8 @@
 #include <optional>
 #include <string>
 
+#include "domain/env/point_mass_reward.h"
+
 namespace nmc::domain::config {
 
 struct PPOHyperparameters {
@@ -42,6 +44,7 @@ struct TrainConfig {
     int64_t live_rollout_steps = 240;
     std::optional<std::filesystem::path> resume_checkpoint;
     std::optional<std::filesystem::path> mujoco_model_path;
+    env::PointMassRewardConfig point_mass_reward{};
 };
 
 struct EvalConfig {
@@ -54,6 +57,7 @@ struct EvalConfig {
     bool deterministic_policy = true;
     std::string inference_backend = "libtorch";
     std::optional<std::filesystem::path> mujoco_model_path;
+    env::PointMassRewardConfig point_mass_reward{};
 };
 
 struct BenchmarkConfig {
@@ -64,6 +68,7 @@ struct BenchmarkConfig {
 
 std::string to_json(const PPOHyperparameters& config);
 std::string to_json(const TrainerConfig& config);
+std::string to_json(const env::PointMassRewardConfig& config);
 std::string to_json(const TrainConfig& config);
 std::string to_json(const EvalConfig& config);
 std::string to_json(const BenchmarkConfig& config);
