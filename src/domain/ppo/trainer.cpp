@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <concepts>
 #include <iomanip>
 #include <ostream>
 #include <ranges>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
@@ -268,6 +270,12 @@ RolloutBatch PPOTrainer::collect_rollout() {
 TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64_t update_index) {
     model_->train();
 
+    if (!torch::isfinite(batch.observations).all().item<bool>() ||
+        !torch::isfinite(batch.advantages).all().item<bool>() ||
+        !torch::isfinite(batch.returns).all().item<bool>()) {
+        throw std::runtime_error("PPO batch contains NaN/Inf values");
+    }
+
     const auto sample_count = batch.observations.size(0);
     const auto return_mean = batch.returns.mean();
     const auto return_std = batch.returns.std(false).clamp_min(1.0e-5);
@@ -345,6 +353,10 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
                 entropy_weight * entropy_bonus +
                 config_.ppo.std_floor_weight * std_floor_penalty;
 
+            if (!torch::isfinite(total_loss).item<bool>()) {
+                throw std::runtime_error("PPO total loss became NaN/Inf");
+            }
+
             optimizer_->zero_grad();
             total_loss.backward();
             torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.ppo.max_grad_norm);
@@ -360,6 +372,15 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
                     .mean()
                     .item<float>();
             last_action_std = std.mean().item<float>();
+
+            if (!std::isfinite(last_policy_loss) ||
+                !std::isfinite(last_value_loss) ||
+                !std::isfinite(last_entropy) ||
+                !std::isfinite(last_approx_kl) ||
+                !std::isfinite(last_clip_fraction) ||
+                !std::isfinite(last_action_std)) {
+                throw std::runtime_error("PPO metrics became NaN/Inf");
+            }
 
             if (last_approx_kl > kTargetApproxKl * 1.5f) {
                 stop_early = true;

@@ -47,6 +47,7 @@ void sqlite3_free(void*);
 }  // extern "C"
 
 constexpr int SQLITE_OK = 0;
+constexpr int SQLITE_CONSTRAINT = 19;
 constexpr int SQLITE_ROW = 100;
 constexpr int SQLITE_DONE = 101;
 

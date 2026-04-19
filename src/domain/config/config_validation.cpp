@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "common/run_id.h"
 #include "domain/env/environment_factory.h"
 #include "domain/inference/inference_backend_factory.h"
 
@@ -60,6 +61,9 @@ void validate_train_config_or_throw(const TrainConfig& config) {
     if (config.live_rollout_steps <= 0) {
         errors.push_back("--live-steps must be > 0");
     }
+    if (!config.run_id.empty() && !common::is_valid_run_id(config.run_id)) {
+        errors.push_back("--run-id must match [A-Za-z0-9][A-Za-z0-9_.-]{0,63}");
+    }
     if (config.resume_checkpoint.has_value() && config.resume_checkpoint->empty()) {
         errors.push_back("--resume-checkpoint path is empty");
     }
@@ -114,6 +118,9 @@ void validate_eval_config_or_throw(const EvalConfig& config) {
     if (config.max_steps <= 0) {
         errors.push_back("--max-steps must be > 0");
     }
+    if (!config.run_id.empty() && !common::is_valid_run_id(config.run_id)) {
+        errors.push_back("--run-id must match [A-Za-z0-9][A-Za-z0-9_.-]{0,63}");
+    }
     if (config.mujoco_model_path.has_value() && config.mujoco_model_path->empty()) {
         errors.push_back("--mujoco-model path is empty");
     }
@@ -130,6 +137,9 @@ void validate_benchmark_config_or_throw(const BenchmarkConfig& config) {
     std::vector<std::string> errors;
     if (config.benchmark_name.empty()) {
         errors.push_back("--name must not be empty");
+    }
+    if (!common::is_valid_run_id(config.benchmark_name)) {
+        errors.push_back("--name must match [A-Za-z0-9][A-Za-z0-9_.-]{0,63}");
     }
     if (config.seed < 0) {
         errors.push_back("--seed must be >= 0");

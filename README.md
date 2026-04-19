@@ -116,6 +116,12 @@ The baseline remains CPU-first (`libtorch`). TensorRT backend names are accepted
 ./build/nmc eval --checkpoint artifacts/latest/checkpoint.pt --backend tensorrt_fp16 --episodes 10 --seed 7 --run-id eval_trt_fp16_fallback
 ```
 
+### 6) Validate artifact + SQLite contracts
+
+```bash
+python3 scripts/validate_artifacts.py --root artifacts --strict
+```
+
 ## TensorRT Integration Status + Measured Data
 
 Current implementation separates two states:
@@ -249,6 +255,12 @@ artifacts/
 DB docs:
 
 - `docs/database/sqlite-telemetry.md`
+
+Run ID policy:
+
+- all CLI/API `run_id` values must match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`
+- invalid IDs fail fast before file/DB writes
+- `eval` updates `artifacts/latest/manifest.json` and summaries, but does not overwrite global latest checkpoint
 
 Replay docs:
 

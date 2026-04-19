@@ -47,12 +47,18 @@ std::string ok_response(const std::string_view payload_json) {
     return stream.str();
 }
 
-std::string error_response(const std::string_view code, const std::string_view message, const std::string_view path) {
+std::string error_response(
+    const std::string_view code,
+    const std::string_view message,
+    const std::string_view path,
+    const std::string_view details_json
+) {
     std::ostringstream stream;
     stream << "{\"status\":\"error\",\"timestamp\":" << common::json_string(common::now_utc_iso8601()) << ",\"error\":{"
            << "\"code\":" << common::json_string(code) << ','
            << "\"message\":" << common::json_string(message) << ','
-           << "\"path\":" << common::json_string(path)
+           << "\"path\":" << common::json_string(path) << ','
+           << "\"details\":" << details_json
            << "}}";
     return stream.str();
 }

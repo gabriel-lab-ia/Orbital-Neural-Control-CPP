@@ -57,6 +57,7 @@
       "name": "debug-sanitized",
       "displayName": "Debug + ASAN/UBSAN",
       "inherits": "dev",
+      "binaryDir": "${sourceDir}/build-debug-sanitized",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "NMC_ENABLE_ASAN": "ON",
@@ -67,6 +68,7 @@
       "name": "debug-tsan",
       "displayName": "Debug + TSAN",
       "inherits": "dev",
+      "binaryDir": "${sourceDir}/build-debug-tsan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "NMC_ENABLE_TSAN": "ON"
@@ -76,6 +78,7 @@
       "name": "debug-coverage",
       "displayName": "Debug + Coverage",
       "inherits": "dev",
+      "binaryDir": "${sourceDir}/build-debug-coverage",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "NMC_ENABLE_COVERAGE": "ON"
@@ -126,6 +129,9 @@
       "displayName": "Orbital Optional Stack (Core + Backend)",
       "inherits": "orbital-core-only",
       "binaryDir": "${sourceDir}/build-orbital",
+      "environment": {
+        "VCPKG_MANIFEST_FEATURES": "backend"
+      },
       "cacheVariables": {
         "NMC_BUILD_ORBITAL_BACKEND": "ON"
       }

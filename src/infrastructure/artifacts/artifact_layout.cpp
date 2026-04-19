@@ -4,6 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
+
+#include "common/run_id.h"
 
 namespace nmc::infrastructure::artifacts {
 namespace {
@@ -26,9 +29,32 @@ std::filesystem::path make_temp_path_for(const std::filesystem::path& destinatio
     return destination.parent_path() / stream.str();
 }
 
+void ensure_path_within_root_or_throw(
+    const std::filesystem::path& root,
+    const std::filesystem::path& candidate,
+    const std::string_view context
+) {
+    std::error_code root_error;
+    std::error_code candidate_error;
+    const auto absolute_root = std::filesystem::absolute(root, root_error).lexically_normal();
+    const auto absolute_candidate = std::filesystem::absolute(candidate, candidate_error).lexically_normal();
+    if (root_error || candidate_error) {
+        throw std::runtime_error("failed to normalize artifact path for safety check");
+    }
+
+    const auto root_string = absolute_root.string();
+    const auto candidate_string = absolute_candidate.string();
+    if (candidate_string.size() < root_string.size() ||
+        candidate_string.compare(0, root_string.size(), root_string) != 0) {
+        throw std::runtime_error(std::string(context) + " escaped artifact root: " + candidate_string);
+    }
+}
+
 }  // namespace
 
 ArtifactLayout make_layout(const std::filesystem::path& root, const std::string& run_id) {
+    common::validate_run_id_or_throw(run_id, "run_id");
+
     ArtifactLayout layout;
     layout.root = root;
     layout.runs_dir = root / "runs";
@@ -50,6 +76,10 @@ ArtifactLayout make_layout(const std::filesystem::path& root, const std::string&
 
     layout.global_checkpoint_model = layout.checkpoints_dir / (run_id + "_policy_last.pt");
     layout.global_checkpoint_meta = layout.checkpoints_dir / (run_id + "_policy_last.meta");
+
+    ensure_path_within_root_or_throw(layout.runs_dir, layout.run_dir, "run_dir");
+    ensure_path_within_root_or_throw(layout.checkpoints_dir, layout.global_checkpoint_model, "global_checkpoint_model");
+    ensure_path_within_root_or_throw(layout.checkpoints_dir, layout.global_checkpoint_meta, "global_checkpoint_meta");
 
     std::filesystem::create_directories(layout.runs_dir);
     std::filesystem::create_directories(layout.checkpoints_dir);
@@ -104,7 +134,8 @@ void refresh_latest_snapshot(
     const ArtifactLayout& layout,
     const std::vector<std::filesystem::path>& files_to_copy,
     const std::filesystem::path& checkpoint_model,
-    const std::filesystem::path& checkpoint_meta
+    const std::filesystem::path& checkpoint_meta,
+    const bool copy_checkpoint
 ) {
     std::filesystem::create_directories(layout.latest_dir);
 
@@ -117,25 +148,27 @@ void refresh_latest_snapshot(
         }
     }
 
-    if (std::filesystem::exists(checkpoint_model)) {
-        const auto destination = layout.latest_dir / "checkpoint.pt";
-        if (!is_same_path(checkpoint_model, destination)) {
-            std::filesystem::copy_file(
-                checkpoint_model,
-                destination,
-                std::filesystem::copy_options::overwrite_existing
-            );
+    if (copy_checkpoint) {
+        if (std::filesystem::exists(checkpoint_model)) {
+            const auto destination = layout.latest_dir / "checkpoint.pt";
+            if (!is_same_path(checkpoint_model, destination)) {
+                std::filesystem::copy_file(
+                    checkpoint_model,
+                    destination,
+                    std::filesystem::copy_options::overwrite_existing
+                );
+            }
         }
-    }
 
-    if (std::filesystem::exists(checkpoint_meta)) {
-        const auto destination = layout.latest_dir / "checkpoint.meta";
-        if (!is_same_path(checkpoint_meta, destination)) {
-            std::filesystem::copy_file(
-                checkpoint_meta,
-                destination,
-                std::filesystem::copy_options::overwrite_existing
-            );
+        if (std::filesystem::exists(checkpoint_meta)) {
+            const auto destination = layout.latest_dir / "checkpoint.meta";
+            if (!is_same_path(checkpoint_meta, destination)) {
+                std::filesystem::copy_file(
+                    checkpoint_meta,
+                    destination,
+                    std::filesystem::copy_options::overwrite_existing
+                );
+            }
         }
     }
 }

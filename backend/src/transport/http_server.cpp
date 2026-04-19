@@ -3,6 +3,7 @@
 #include "common/http_utils.h"
 #include "common/json.h"
 #include "common/logger.h"
+#include "common/run_id.h"
 #include "common/time_utils.h"
 #include "transport/json_serialization.h"
 
@@ -18,6 +19,7 @@
 #include <functional>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -335,6 +337,14 @@ http::status handle_get(
 
     if (segments.size() >= 2U && segments[0] == "runs") {
         const std::string run_id = segments[1];
+        if (!common::is_valid_run_id(run_id)) {
+            response_json = error_response(
+                "invalid_run_id",
+                "runId must match [A-Za-z0-9][A-Za-z0-9_.-]{0,63}",
+                target.path
+            );
+            return http::status::bad_request;
+        }
 
         if (segments.size() == 2U) {
             const auto run = mission_service.get_run(run_id);
@@ -449,23 +459,46 @@ http::status handle_post(
         response_json = error_response("invalid_request", parse_error, target.path);
         return http::status::bad_request;
     }
+    if (payload->seed.has_value() && payload->seed.value() < 0) {
+        response_json = error_response(
+            "invalid_request",
+            "field 'seed' must be >= 0",
+            target.path
+        );
+        return http::status::bad_request;
+    }
 
     if (target.path == "/train/jobs") {
-        const auto job = job_service.submit(make_request(domain::JobType::Train, *payload));
-        response_json = ok_response(job_to_json(job));
-        return http::status::accepted;
+        try {
+            const auto job = job_service.submit(make_request(domain::JobType::Train, *payload));
+            response_json = ok_response(job_to_json(job));
+            return http::status::accepted;
+        } catch (const std::invalid_argument& ex) {
+            response_json = error_response("invalid_request", ex.what(), target.path);
+            return http::status::bad_request;
+        }
     }
 
     if (target.path == "/eval/jobs") {
-        const auto job = job_service.submit(make_request(domain::JobType::Eval, *payload));
-        response_json = ok_response(job_to_json(job));
-        return http::status::accepted;
+        try {
+            const auto job = job_service.submit(make_request(domain::JobType::Eval, *payload));
+            response_json = ok_response(job_to_json(job));
+            return http::status::accepted;
+        } catch (const std::invalid_argument& ex) {
+            response_json = error_response("invalid_request", ex.what(), target.path);
+            return http::status::bad_request;
+        }
     }
 
     if (target.path == "/benchmark/jobs") {
-        const auto job = job_service.submit(make_request(domain::JobType::Benchmark, *payload));
-        response_json = ok_response(job_to_json(job));
-        return http::status::accepted;
+        try {
+            const auto job = job_service.submit(make_request(domain::JobType::Benchmark, *payload));
+            response_json = ok_response(job_to_json(job));
+            return http::status::accepted;
+        } catch (const std::invalid_argument& ex) {
+            response_json = error_response("invalid_request", ex.what(), target.path);
+            return http::status::bad_request;
+        }
     }
 
     response_json = error_response("not_found", "route not found", target.path);
@@ -513,6 +546,14 @@ void handle_session(
         }
 
         send_response(socket, status, std::move(response_json), config.service_name);
+    } catch (const std::invalid_argument& ex) {
+        common::log(common::LogLevel::Warn, std::string("request validation error: ") + ex.what());
+        send_response(
+            socket,
+            http::status::bad_request,
+            error_response("invalid_request", ex.what(), target.path),
+            config.service_name
+        );
     } catch (const std::exception& ex) {
         common::log(common::LogLevel::Error, std::string("session error: ") + ex.what());
         send_response(

@@ -10,7 +10,12 @@
 namespace orbital::backend::transport {
 
 std::string ok_response(std::string_view payload_json);
-std::string error_response(std::string_view code, std::string_view message, std::string_view path);
+std::string error_response(
+    std::string_view code,
+    std::string_view message,
+    std::string_view path,
+    std::string_view details_json = "null"
+);
 
 std::string run_to_json(const domain::RunRecord& run);
 std::string runs_to_json(const std::vector<domain::RunRecord>& runs, std::int64_t limit, std::int64_t offset);

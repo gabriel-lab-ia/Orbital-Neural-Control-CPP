@@ -4,10 +4,13 @@
 /build-orbital*/
 /build-local/
 /build-backend-local/
+/build-backend-standalone/
+/build-backend-*/
 /cmake-build-*/
 /build-release/
 /build-release-pgo-gen/
 /build-release-pgo-use/
+/build-debug-*/
 /build-tensorrt/
 /compile_commands.json
 .vcpkg/

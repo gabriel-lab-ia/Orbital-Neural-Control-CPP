@@ -9,6 +9,7 @@
 #include "application/evaluation_runner.h"
 #include "application/training_runner.h"
 #include "common/json_utils.h"
+#include "common/run_id.h"
 #include "common/time_utils.h"
 #include "domain/config/config_validation.h"
 #include "infrastructure/artifacts/artifact_layout.h"
@@ -27,6 +28,7 @@ std::string benchmark_json(
 ) {
     std::ostringstream stream;
     stream << "{\n";
+    stream << "  \"schema_version\": \"1.0\",\n";
     stream << "  \"benchmark_id\": \"" << common::json_escape(benchmark_id) << "\",\n";
     stream << "  \"benchmark_name\": \"" << common::json_escape(config.benchmark_name) << "\",\n";
     stream << "  \"quick\": " << (config.quick ? "true" : "false") << ",\n";
@@ -43,6 +45,19 @@ std::string benchmark_json(
     stream << "    \"avg_episode_return\": " << eval.avg_episode_return << ",\n";
     stream << "    \"avg_episode_length\": " << eval.avg_episode_length << ",\n";
     stream << "    \"success_rate\": " << eval.success_rate << "\n";
+    stream << "  },\n";
+    stream << "  \"functional\": {\n";
+    stream << "    \"train_avg_episode_return\": " << train.final_metrics.avg_episode_return << ",\n";
+    stream << "    \"eval_avg_episode_return\": " << eval.avg_episode_return << ",\n";
+    stream << "    \"eval_success_rate\": " << eval.success_rate << "\n";
+    stream << "  },\n";
+    stream << "  \"performance\": {\n";
+    stream << "    \"eval_avg_inference_latency_ms\": " << eval.avg_inference_latency_ms << ",\n";
+    stream << "    \"eval_p95_inference_latency_ms\": " << eval.p95_inference_latency_ms << "\n";
+    stream << "  },\n";
+    stream << "  \"integrity\": {\n";
+    stream << "    \"artifacts_valid\": " << (artifacts_valid ? "true" : "false") << ",\n";
+    stream << "    \"validated_count\": " << validated_artifacts.size() << "\n";
     stream << "  },\n";
     stream << "  \"validated_artifacts\": [\n";
     for (std::size_t index = 0; index < validated_artifacts.size(); ++index) {
@@ -84,6 +99,7 @@ BenchmarkRunner::BenchmarkRunner(std::filesystem::path artifact_root)
 BenchmarkRunOutput BenchmarkRunner::run(const domain::config::BenchmarkConfig& config) {
     domain::config::validate_benchmark_config_or_throw(config);
     const auto benchmark_id = common::make_run_id(config.benchmark_name);
+    common::validate_run_id_or_throw(benchmark_id, "benchmark_id");
     const auto started_at = common::now_utc_iso8601();
     infrastructure::persistence::SQLiteExperimentStore db(artifact_root_ / "experiments.sqlite");
     db.initialize();

@@ -307,6 +307,7 @@ message(STATUS "  Primary CLI target: nmc")
 set(NMC_RUNTIME_SOURCES
     src/common/determinism.cpp
     src/common/json_utils.cpp
+    src/common/run_id.cpp
     src/common/time_utils.cpp
     src/domain/config/experiment_config.cpp
     src/domain/config/config_validation.cpp
@@ -330,6 +331,7 @@ set(NMC_RUNTIME_SOURCES
     src/infrastructure/persistence/sqlite_experiment_store.cpp
     src/infrastructure/reporting/live_rollout_writer.cpp
     src/infrastructure/reporting/metrics_csv_writer.cpp
+    src/application/run_lifecycle.cpp
     src/application/benchmark_runner.cpp
     src/application/evaluation_runner.cpp
     src/application/training_runner.cpp
@@ -498,10 +500,14 @@ if(NMC_BUILD_ORBITAL_CORE)
 endif()
 
 if(NMC_BUILD_ORBITAL_BACKEND)
-    find_package(Boost QUIET COMPONENTS system json)
+    find_package(Boost CONFIG QUIET COMPONENTS system json)
     if(Boost_FOUND)
         add_subdirectory(backend)
     else()
-        message(WARNING "Boost::system/json not found. Skipping orbital backend target. Install libboost-all-dev and reconfigure to enable it.")
+        message(
+            WARNING
+            "Boost::system/json not found. Skipping orbital backend target. "
+            "Install libboost-all-dev or configure vcpkg backend feature dependencies."
+        )
     endif()
 endif()

@@ -36,7 +36,8 @@ void refresh_latest_snapshot(
     const ArtifactLayout& layout,
     const std::vector<std::filesystem::path>& files_to_copy,
     const std::filesystem::path& checkpoint_model,
-    const std::filesystem::path& checkpoint_meta
+    const std::filesystem::path& checkpoint_meta,
+    bool copy_checkpoint = true
 );
 
 }  // namespace nmc::infrastructure::artifacts

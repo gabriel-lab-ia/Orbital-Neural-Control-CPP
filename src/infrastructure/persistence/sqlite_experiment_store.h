@@ -46,6 +46,12 @@ struct BenchmarkTelemetry {
     std::string created_at;
 };
 
+struct RunArtifactTelemetry {
+    std::string run_id;
+    std::string artifact_type;
+    std::string path;
+};
+
 class SQLiteExperimentStore {
 public:
     explicit SQLiteExperimentStore(std::filesystem::path db_path);
@@ -66,6 +72,7 @@ public:
     void insert_episode(const EpisodeTelemetry& episode);
     void insert_event(const EventTelemetry& event);
     void insert_benchmark(const BenchmarkTelemetry& benchmark);
+    void insert_run_artifact(const RunArtifactTelemetry& artifact);
 
 private:
     void execute(const std::string& sql) const;
@@ -76,6 +83,7 @@ private:
     void apply_migrations();
     void apply_schema_v1();
     void apply_schema_v2();
+    void apply_schema_v3();
 
     std::filesystem::path db_path_;
     sqlite3* db_ = nullptr;

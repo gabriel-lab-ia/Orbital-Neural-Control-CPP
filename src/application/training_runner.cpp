@@ -7,9 +7,11 @@
 #include <stdexcept>
 #include <vector>
 
+#include "application/run_lifecycle.h"
 #include "common/json_utils.h"
 #include "common/time_utils.h"
 #include "common/determinism.h"
+#include "common/run_id.h"
 #include "domain/config/config_validation.h"
 #include "domain/env/environment_factory.h"
 #include "domain/ppo/trainer.h"
@@ -32,6 +34,7 @@ std::string training_summary_json(
 ) {
     std::ostringstream stream;
     stream << "{\n";
+    stream << "  \"schema_version\": \"1.0\",\n";
     stream << "  \"run_id\": \"" << common::json_escape(run_id) << "\",\n";
     stream << "  \"environment\": \"" << common::json_escape(environment) << "\",\n";
     stream << "  \"completed_episodes\": " << completed_episodes << ",\n";
@@ -54,6 +57,19 @@ std::string training_summary_json(
     return stream.str();
 }
 
+std::vector<infrastructure::artifacts::RunManifestArtifact> train_manifest_artifacts(
+    const infrastructure::artifacts::ArtifactLayout& layout
+) {
+    return {
+        {"run_dir", layout.run_dir},
+        {"training_metrics_csv", layout.train_metrics_csv},
+        {"training_summary_json", layout.train_summary_json},
+        {"live_rollout_csv", layout.live_rollout_csv},
+        {"checkpoint_model", layout.run_checkpoint_model},
+        {"checkpoint_meta", layout.run_checkpoint_meta}
+    };
+}
+
 }  // namespace
 
 TrainingRunner::TrainingRunner(std::filesystem::path artifact_root)
@@ -64,6 +80,7 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
     if (config.run_id.empty()) {
         config.run_id = common::make_run_id("train");
     }
+    common::validate_run_id_or_throw(config.run_id, "--run-id");
     domain::config::validate_train_config_or_throw(config);
 
     const auto started_at = common::now_utc_iso8601();
@@ -72,16 +89,17 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
     infrastructure::persistence::SQLiteExperimentStore db(artifact_root_ / "experiments.sqlite");
     db.initialize();
 
-    db.insert_run_start(
+    const auto config_json = domain::config::to_json(config);
+    record_run_start(
+        db,
         {
             config.run_id,
             "train",
             config.environment,
             config.trainer.seed,
             started_at,
-            "running",
-            layout.run_dir.string(),
-            domain::config::to_json(config)
+            layout.run_dir,
+            config_json
         }
     );
 
@@ -192,20 +210,23 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
                 started_at,
                 finished_at,
                 "completed",
-                domain::config::to_json(config),
-                {
-                    {"run_dir", layout.run_dir},
-                    {"training_metrics_csv", layout.train_metrics_csv},
-                    {"training_summary_json", layout.train_summary_json},
-                    {"live_rollout_csv", layout.live_rollout_csv},
-                    {"checkpoint_model", layout.run_checkpoint_model},
-                    {"checkpoint_meta", layout.run_checkpoint_meta}
-                },
+                config_json,
+                train_manifest_artifacts(layout),
                 layout.run_checkpoint_model.string(),
                 std::nullopt
             }
         );
         infrastructure::artifacts::write_text_file(layout.run_manifest_json, manifest);
+        const auto manifest_artifacts = train_manifest_artifacts(layout);
+        for (const auto& artifact : manifest_artifacts) {
+            db.insert_run_artifact(
+                {
+                    config.run_id,
+                    artifact.name,
+                    artifact.path.string()
+                }
+            );
+        }
 
         infrastructure::artifacts::refresh_latest_snapshot(
             layout,
@@ -219,7 +240,7 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
             layout.run_checkpoint_meta
         );
 
-        db.finalize_run(config.run_id, "completed", finished_at, summary_json);
+        record_run_success(db, config.run_id, finished_at, summary_json);
 
         std::cout << "Run completed: " << config.run_id << '\n';
         std::cout << "Training summary: " << layout.train_summary_json << '\n';
@@ -237,74 +258,43 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
         };
     } catch (const std::exception& error) {
         const auto failed_at = common::now_utc_iso8601();
-        const std::string error_summary = "{\"status\":\"failed\",\"run_id\":\"" +
-            common::json_escape(config.run_id) + "\",\"error\":\"" + common::json_escape(error.what()) + "\"}";
-
         try {
-            const auto failed_manifest = infrastructure::artifacts::render_run_manifest_json(
+            record_run_failure(
+                db,
+                layout,
                 {
                     config.run_id,
                     "train",
                     config.environment,
                     started_at,
                     failed_at,
-                    "failed",
-                    domain::config::to_json(config),
-                    {
-                        {"run_dir", layout.run_dir},
-                        {"training_metrics_csv", layout.train_metrics_csv},
-                        {"training_summary_json", layout.train_summary_json},
-                        {"live_rollout_csv", layout.live_rollout_csv},
-                        {"checkpoint_model", layout.run_checkpoint_model},
-                        {"checkpoint_meta", layout.run_checkpoint_meta}
-                    },
+                    config_json,
+                    train_manifest_artifacts(layout),
                     layout.run_checkpoint_model.string(),
                     error.what()
                 }
             );
-            infrastructure::artifacts::write_text_file(layout.run_manifest_json, failed_manifest);
-            db.insert_event(
-                {
-                    config.run_id,
-                    "error",
-                    "run_failed",
-                    error.what(),
-                    "{}",
-                    failed_at
-                }
-            );
-            db.finalize_run(config.run_id, "failed", failed_at, error_summary);
         } catch (...) {
         }
         throw;
     } catch (...) {
         const auto failed_at = common::now_utc_iso8601();
-        const std::string error_summary = "{\"status\":\"failed\",\"run_id\":\"" + common::json_escape(config.run_id) +
-            "\",\"error\":\"unknown\"}";
         try {
-            const auto failed_manifest = infrastructure::artifacts::render_run_manifest_json(
+            record_run_failure(
+                db,
+                layout,
                 {
                     config.run_id,
                     "train",
                     config.environment,
                     started_at,
                     failed_at,
-                    "failed",
-                    domain::config::to_json(config),
-                    {
-                        {"run_dir", layout.run_dir},
-                        {"training_metrics_csv", layout.train_metrics_csv},
-                        {"training_summary_json", layout.train_summary_json},
-                        {"live_rollout_csv", layout.live_rollout_csv},
-                        {"checkpoint_model", layout.run_checkpoint_model},
-                        {"checkpoint_meta", layout.run_checkpoint_meta}
-                    },
+                    config_json,
+                    train_manifest_artifacts(layout),
                     layout.run_checkpoint_model.string(),
                     "unknown"
                 }
             );
-            infrastructure::artifacts::write_text_file(layout.run_manifest_json, failed_manifest);
-            db.finalize_run(config.run_id, "failed", failed_at, error_summary);
         } catch (...) {
         }
         throw;

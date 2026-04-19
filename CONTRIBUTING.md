@@ -20,7 +20,8 @@ Baseline vs optional scope:
 ## Development Setup
 
 ```bash
-bash tools/setup_libtorch_cpu.sh
+./tools/setup_vcpkg.sh
+export VCPKG_ROOT="$HOME/.vcpkg"
 cmake --preset dev
 cmake --build --preset build
 ```
@@ -37,12 +38,16 @@ Run at least these checks locally:
 
 ```bash
 ./build/nmc benchmark --quick --name pre_pr_smoke --seed 7
+./build/nmc train --quick --run-id pre_pr_train_001 --seed 7
+./build/nmc eval --checkpoint artifacts/latest/checkpoint.pt --episodes 10 --backend libtorch --run-id pre_pr_eval_001 --seed 7
 ctest --test-dir build --output-on-failure --verbose -R nmc_smoke_benchmark
+python3 scripts/validate_artifacts.py --root artifacts --strict
 ```
 
 CI-equivalent local path:
 
 ```bash
+export VCPKG_ROOT="$HOME/.vcpkg"
 cmake --preset ci
 cmake --build --preset build-ci --verbose
 ./build-ci/nmc help

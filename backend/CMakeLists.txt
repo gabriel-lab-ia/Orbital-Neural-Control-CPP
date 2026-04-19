@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(OrbitalBackend LANGUAGES CXX)
 
-find_package(Boost REQUIRED COMPONENTS system json)
+find_package(Boost CONFIG REQUIRED COMPONENTS system json)
 find_package(SQLite3 QUIET)
 if(NOT SQLite3_FOUND)
     find_library(SQLITE3_FALLBACK_LIBRARY sqlite3)
@@ -15,6 +15,7 @@ set(ORBITAL_BACKEND_SOURCES
     src/main.cpp
     src/common/http_utils.cpp
     src/common/logger.cpp
+    src/common/run_id.cpp
     src/common/time_utils.cpp
     src/persistence/sqlite_store.cpp
     src/telemetry/csv_telemetry_store.cpp
@@ -31,7 +32,6 @@ target_compile_features(orbital_backend PRIVATE cxx_std_20)
 
 target_include_directories(
     orbital_backend PRIVATE
-    ${Boost_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 

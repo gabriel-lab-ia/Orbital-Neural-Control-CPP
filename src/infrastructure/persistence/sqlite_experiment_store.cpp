@@ -14,7 +14,7 @@ void check_sqlite_result(const int code, sqlite3* db, const char* context) {
 }
 
 void check_bind_result(const int code, sqlite3* db, const char* context) {
-    if (code != SQLITE_OK) {
+    if (code != SQLITE_OK) {// namespace
         throw std::runtime_error(std::string(context) + ": " + sqlite3_errmsg(db));
     }
 }
@@ -219,7 +219,7 @@ void SQLiteExperimentStore::apply_schema_v2() {
 }
 
 void SQLiteExperimentStore::apply_migrations() {
-    constexpr int64_t kTargetSchemaVersion = 2;
+    constexpr int64_t kTargetSchemaVersion = 3;
     const int64_t version = current_schema_version();
 
     execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -232,6 +232,11 @@ void SQLiteExperimentStore::apply_migrations() {
         if (version < 2) {
             apply_schema_v2();
             record_migration(2);
+        }
+
+        if (version < 3) {
+            apply_schema_v3();
+            record_migration(3);
         }
 
         execute("COMMIT;");
@@ -247,6 +252,23 @@ void SQLiteExperimentStore::apply_migrations() {
             ", got " + std::to_string(applied_version)
         );
     }
+}
+
+void SQLiteExperimentStore::apply_schema_v3() {
+    execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_run_id_mode ON runs(run_id, mode);");
+    execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_episodes_run_phase_episode "
+        "ON episodes(run_id, phase, episode_index);"
+    );
+    execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_run_type_created "
+        "ON events(run_id, event_type, created_at);"
+    );
+    execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_run_artifacts_unique "
+        "ON run_artifacts(run_id, artifact_type, path);"
+    );
+    execute("CREATE INDEX IF NOT EXISTS idx_run_configs_created ON run_configs(created_at);");
 }
 
 void SQLiteExperimentStore::initialize() {
@@ -289,7 +311,35 @@ void SQLiteExperimentStore::insert_run_start(const RunStart& run) {
     );
 
     const int rc = sqlite3_step(statement.get());
+    if (rc == SQLITE_CONSTRAINT) {
+        throw std::runtime_error(
+            "insert_run_start: run_id '" + run.run_id +
+            "' already exists for mode '" + run.mode + "'. Use a unique --run-id."
+        );
+    }
     check_sqlite_result(rc, db_, "insert_run_start");
+
+    Statement config_statement(
+        db_,
+        "INSERT INTO run_configs(run_id, config_json, created_at) VALUES(?, ?, ?) "
+        "ON CONFLICT(run_id) DO UPDATE SET config_json = excluded.config_json;"
+    );
+    check_bind_result(
+        sqlite3_bind_text(config_statement.get(), 1, run.run_id.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_configs run_id"
+    );
+    check_bind_result(
+        sqlite3_bind_text(config_statement.get(), 2, run.config_json.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_configs config_json"
+    );
+    check_bind_result(
+        sqlite3_bind_text(config_statement.get(), 3, run.started_at.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_configs created_at"
+    );
+    check_sqlite_result(sqlite3_step(config_statement.get()), db_, "insert_run_configs");
 }
 
 void SQLiteExperimentStore::finalize_run(
@@ -412,6 +462,30 @@ void SQLiteExperimentStore::insert_benchmark(const BenchmarkTelemetry& benchmark
 
     const int rc = sqlite3_step(statement.get());
     check_sqlite_result(rc, db_, "insert_benchmark");
+}
+
+void SQLiteExperimentStore::insert_run_artifact(const RunArtifactTelemetry& artifact) {
+    Statement statement(
+        db_,
+        "INSERT INTO run_artifacts(run_id, artifact_type, path, created_at) "
+        "VALUES (?, ?, ?, datetime('now'));"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 1, artifact.run_id.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_artifact run_id"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 2, artifact.artifact_type.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_artifact type"
+    );
+    check_bind_result(
+        sqlite3_bind_text(statement.get(), 3, artifact.path.c_str(), -1, sqlite_transient()),
+        db_,
+        "bind run_artifact path"
+    );
+    check_sqlite_result(sqlite3_step(statement.get()), db_, "insert_run_artifact");
 }
 
 }  // namespace nmc::infrastructure::persistence
