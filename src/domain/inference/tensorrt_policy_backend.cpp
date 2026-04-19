@@ -112,7 +112,7 @@ std::optional<std::filesystem::path> TensorRtPolicyBackend::resolve_libtorch_fal
 void TensorRtPolicyBackend::load_native_or_throw(const std::filesystem::path& model_path) {
     if (!native_runtime_compiled_ || native_backend_ == nullptr) {
         throw std::runtime_error(
-            "TensorRT native backend unavailable in this build. Rebuild with NMC_ENABLE_TENSORRT=ON."
+            "TensorRT native backend unavailable in this build. Rebuild with ENABLE_TENSORRT=ON."
         );
     }
 

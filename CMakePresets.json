@@ -2,7 +2,7 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 24,
+    "minor": 26,
     "patch": 0
   },
   "configurePresets": [
@@ -11,6 +11,8 @@
       "hidden": true,
       "generator": "Ninja",
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "NMC_ENABLE_WARNINGS": "ON",
         "NMC_ENABLE_ASAN": "OFF",
@@ -21,7 +23,7 @@
         "NMC_PGO_MODE": "OFF",
         "NMC_USE_LEGACY_VENDOR_DEPS": "OFF",
         "NMC_ENABLE_MUJOCO": "OFF",
-        "NMC_ENABLE_TENSORRT": "OFF",
+        "ENABLE_TENSORRT": "ON",
         "NMC_BUILD_ORBITAL_CORE": "OFF",
         "NMC_BUILD_ORBITAL_BACKEND": "OFF"
       }
@@ -32,7 +34,7 @@
       "inherits": "base",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_FEATURE_FLAGS": "manifests,binarycaching",
         "VCPKG_TARGET_TRIPLET": "x64-linux",
         "VCPKG_HOST_TRIPLET": "x64-linux"
@@ -50,7 +52,7 @@
       "inherits": "dev",
       "binaryDir": "${sourceDir}/build-tensorrt",
       "cacheVariables": {
-        "NMC_ENABLE_TENSORRT": "ON"
+        "ENABLE_TENSORRT": "ON"
       }
     },
     {
@@ -142,7 +144,9 @@
       "inherits": "base",
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_FEATURE_FLAGS": "manifests,binarycaching",
         "VCPKG_TARGET_TRIPLET": "x64-linux",
         "VCPKG_HOST_TRIPLET": "x64-linux",

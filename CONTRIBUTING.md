@@ -21,7 +21,7 @@ Baseline vs optional scope:
 
 ```bash
 ./tools/setup_vcpkg.sh
-export VCPKG_ROOT="$HOME/.vcpkg"
+./tools/setup_libtorch.sh
 cmake --preset dev
 cmake --build --preset build
 ```
@@ -47,7 +47,6 @@ python3 scripts/validate_artifacts.py --root artifacts --strict
 CI-equivalent local path:
 
 ```bash
-export VCPKG_ROOT="$HOME/.vcpkg"
 cmake --preset ci
 cmake --build --preset build-ci --verbose
 ./build-ci/nmc help

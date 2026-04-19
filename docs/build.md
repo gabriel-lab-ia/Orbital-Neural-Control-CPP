@@ -1,124 +1,89 @@
-# Build and Run Guide
+# Deterministic Build Guide
 
-All commands are expected to run from repository root.
+All commands must run from repository root.
 
-## Prerequisites
+## Build requirements
 
 - Linux (primary target)
-- CMake >= 3.24
+- CMake >= 3.26
 - Ninja
-- C++20 compiler (GCC/Clang)
-- SQLite runtime/devel package (`libsqlite3-dev`)
-- Node.js 20+ for optional frontend
-- vcpkg (manifest mode)
+- GCC/G++ (C++20)
+- `libsqlite3-dev`
+- `curl`, `unzip`
 
-Bootstrap vcpkg once:
+## One-command release build
+
+```bash
+./tools/build_release.sh
+```
+
+This script performs:
+
+1. vcpkg bootstrap in `external/vcpkg` (manifest mode)
+2. LibTorch prebuilt download in `third_party/libtorch`
+3. Release configure with Ninja
+4. Build
+
+## Manual deterministic build
 
 ```bash
 ./tools/setup_vcpkg.sh
-export VCPKG_ROOT="$HOME/.vcpkg"
+./tools/setup_libtorch.sh
+
+cmake -S . -B build \
+  -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-linux \
+  -DVCPKG_HOST_TRIPLET=x64-linux \
+  -DVCPKG_FEATURE_FLAGS=manifests,binarycaching
+
+cmake --build build
 ```
 
-If `VCPKG_ROOT` is missing/invalid, CMake now fails early with an explicit error message instead of silently falling back.
-
-## Baseline Runtime (`nmc`)
-
-Configure + build:
+## Smoke validation
 
 ```bash
-cmake --preset dev
-cmake --build --preset build
-./build/nmc help
+ctest --test-dir build --output-on-failure --verbose -R "nmc_smoke_benchmark|nmc_inference_parity"
+python3 scripts/validate_artifacts.py --root artifacts --strict
 ```
 
-Smoke benchmark:
+## TensorRT behavior
+
+- `ENABLE_TENSORRT=ON` by default
+- if TensorRT SDK is present, native runtime is enabled
+- if TensorRT SDK is missing, build continues with LibTorch backend fallback
+
+Force CPU-first baseline:
 
 ```bash
-./build/nmc benchmark --quick --name smoke_local --seed 7
+cmake -S . -B build -G Ninja -DENABLE_TENSORRT=OFF \
+  -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 
-Train/eval quick validation:
+## Notes on reproducibility
 
-```bash
-./build/nmc train --quick --run-id train_quick_001 --seed 7
-./build/nmc eval --checkpoint artifacts/latest/checkpoint.pt --episodes 10 --backend libtorch --run-id eval_local_001 --seed 7
-```
+- vcpkg baseline is pinned in `vcpkg.json`
+- triplet is fixed to `x64-linux`
+- LibTorch is consumed from `third_party/libtorch` only
+- CI uses Release + Ninja + smoke tests + artifact integrity validation
 
-## Optional Backend
+## Dependency policy
 
-```bash
-cmake --preset orbital-stack
-cmake --build --preset build-orbital-backend
-./build-orbital/backend/orbital_backend
-```
+The default dependency graph intentionally excludes heavyweight/transitive stacks that are not required by the baseline runtime.
 
-Environment variables:
+Removed from default path:
 
-- `ORBITAL_BACKEND_PORT` (default `8080`)
-- `ORBITAL_ARTIFACT_ROOT` (default `artifacts`)
-- `ORBITAL_SQLITE_PATH` (default `artifacts/experiments.sqlite`)
-- `ORBITAL_REPO_ROOT` (default current directory)
-- `ORBITAL_JOB_EXECUTOR=1` to allow backend-submitted jobs to execute `nmc`
+- OpenCV
+- LevelDB
+- MPI
+- OpenCL
+- Vulkan
+- LLVM toolchain dependencies
 
-## Optional Frontend
+Baseline manifest dependencies are limited to:
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Validation:
-
-```bash
-npm run typecheck
-npm run build
-```
-
-Default backend URLs (override with env):
-
-- `VITE_BACKEND_HTTP=http://localhost:8080`
-- `VITE_BACKEND_WS=ws://localhost:8080`
-
-## Docker Compose (Optional Stack)
-
-```bash
-docker compose up --build -d mlflow backend frontend
-docker compose run --rm training
-docker compose logs -f mlflow backend frontend
-```
-
-## CI-equivalent Baseline Path
-
-```bash
-cmake --preset ci
-cmake --build --preset build-ci
-ctest --test-dir build-ci --output-on-failure --verbose -R nmc_smoke_benchmark
-```
-
-Expected smoke artifacts:
-
-- `artifacts/benchmarks/latest.json`
-- `artifacts/latest/manifest.json`
-- `artifacts/latest/checkpoint.pt`
-- `artifacts/experiments.sqlite`
-
-## Optional TensorRT Configure Path
-
-TensorRT is opt-in and requires SDK headers/libs available locally:
-
-```bash
-cmake --preset dev-tensorrt -DNMC_TENSORRT_ROOT=/opt/tensorrt
-cmake --build --preset build-tensorrt
-
-# first eval from ONNX builds/serializes an engine
-./build-tensorrt/nmc eval --checkpoint artifacts/latest/checkpoint.onnx --backend tensorrt_fp16 --episodes 10 --seed 7
-```
-
-Without TensorRT SDK, keep using baseline `dev` preset; `tensorrt_*` backends fall back to LibTorch when native runtime is unavailable.
-
-Quick backend parity + latency comparison table:
-
-```bash
-NMC_BIN=./build/nmc ./scripts/compare_inference_backends.sh
-```
+- `eigen3`
+- `sqlite3`

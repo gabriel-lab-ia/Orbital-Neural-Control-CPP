@@ -987,13 +987,13 @@ void TensorRtNativeBackend::load_from_onnx_or_engine(
     const TensorRtBuildOptions&
 ) {
     throw std::runtime_error(
-        "TensorRT native backend is unavailable in this build. Reconfigure with NMC_ENABLE_TENSORRT=ON."
+        "TensorRT native backend is unavailable in this build. Reconfigure with ENABLE_TENSORRT=ON."
     );
 }
 
 InferenceOutput TensorRtNativeBackend::infer(const torch::Tensor&, const bool) {
     throw std::runtime_error(
-        "TensorRT native backend is unavailable in this build. Reconfigure with NMC_ENABLE_TENSORRT=ON."
+        "TensorRT native backend is unavailable in this build. Reconfigure with ENABLE_TENSORRT=ON."
     );
 }
 

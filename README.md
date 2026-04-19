@@ -73,11 +73,21 @@ All commands must run from repository root.
 ### 1) Bootstrap + configure + build baseline (vcpkg)
 
 ```bash
-./tools/setup_vcpkg.sh
-export VCPKG_ROOT="$HOME/.vcpkg"
-cmake --preset dev
-cmake --build --preset build
+./tools/build_release.sh
 ./build/nmc help
+```
+
+Manual deterministic flow:
+
+```bash
+./tools/setup_vcpkg.sh
+./tools/setup_libtorch.sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-linux -DVCPKG_HOST_TRIPLET=x64-linux
+cmake --build build
 ```
 
 ### 2) Smoke benchmark
@@ -269,6 +279,7 @@ Replay docs:
 ## Documentation Index
 
 - `docs/build.md`
+- `docs/dependency-diagram.md`
 - `docs/architecture.md`
 - `docs/architecture/backend-api.md`
 - `docs/architecture/system-dataflow.md`
@@ -282,7 +293,7 @@ Replay docs:
 ## Honest Constraints
 
 - baseline runtime is CPU-first
-- TensorRT native path requires build with `NMC_ENABLE_TENSORRT=ON` and local TensorRT + CUDA runtime libraries
+- TensorRT native path requires build with `ENABLE_TENSORRT=ON` and local TensorRT + CUDA runtime libraries
 - if TensorRT initialization fails, runtime automatically falls back to LibTorch to preserve pipeline availability
 - backend/frontend remain optional stack modules
 - frontend 3D globe is mission-UI oriented and not a full geospatial GIS engine

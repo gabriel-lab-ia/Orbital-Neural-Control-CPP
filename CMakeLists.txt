@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.26)
 
 project(
     OrbitalNeuralControlCPP
@@ -10,6 +10,7 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
@@ -27,25 +28,38 @@ set(NMC_PGO_MODE "OFF" CACHE STRING "Profile-guided optimization mode: OFF|GENER
 set_property(CACHE NMC_PGO_MODE PROPERTY STRINGS OFF GENERATE USE AUTO)
 option(NMC_USE_LEGACY_VENDOR_DEPS "Allow fallback to vendored dependencies in lib/" OFF)
 option(NMC_ENABLE_MUJOCO "Enable MuJoCo environment support" OFF)
-option(NMC_ENABLE_TENSORRT "Enable optional TensorRT runtime hooks (requires TensorRT SDK)" OFF)
+option(ENABLE_TENSORRT "Enable TensorRT acceleration" ON)
+option(NMC_ENABLE_TENSORRT "Deprecated alias for ENABLE_TENSORRT" OFF)
 option(NMC_BUILD_ORBITAL_CORE "Build orbital core/control/sim library + tests" OFF)
 option(NMC_BUILD_ORBITAL_BACKEND "Build orbital backend WebSocket/REST service" OFF)
+
+if(NMC_ENABLE_TENSORRT)
+    set(ENABLE_TENSORRT ON)
+endif()
 
 # -----------------------------------------------------------------------------
 # Dependencies (vcpkg-first, optional legacy fallback)
 # -----------------------------------------------------------------------------
 set(NMC_EIGEN_DEFAULT_ROOT "")
-set(NMC_TORCH_DEFAULT_ROOT "")
+set(NMC_TORCH_DEFAULT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libtorch")
 set(NMC_EIGEN_ROOT "${NMC_EIGEN_DEFAULT_ROOT}" CACHE PATH "Legacy Eigen root when fallback is enabled")
 set(NMC_TORCH_ROOT "${NMC_TORCH_DEFAULT_ROOT}" CACHE PATH "Legacy LibTorch root when fallback is enabled")
 set(NMC_MUJOCO_ROOT "" CACHE PATH "Optional MuJoCo installation root")
 set(NMC_TENSORRT_ROOT "" CACHE PATH "Optional TensorRT SDK root")
 
 if(NOT NMC_USE_LEGACY_VENDOR_DEPS)
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL "")
+        message(
+            FATAL_ERROR
+            "CMAKE_TOOLCHAIN_FILE is required in manifest mode. "
+            "Use external/vcpkg/scripts/buildsystems/vcpkg.cmake."
+        )
+    endif()
+
     if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "^/scripts/buildsystems/vcpkg\\.cmake$")
         message(
             FATAL_ERROR
-            "VCPKG_ROOT is not set. Run ./tools/setup_vcpkg.sh and export VCPKG_ROOT before configuring."
+            "VCPKG_ROOT is not set. Run ./tools/setup_vcpkg.sh before configuring."
         )
     endif()
 
@@ -70,36 +84,29 @@ if(NOT Eigen3_FOUND)
     endif()
 endif()
 
+if(NOT DEFINED Torch_DIR OR Torch_DIR STREQUAL "")
+    set(Torch_DIR "${NMC_TORCH_ROOT}/share/cmake/Torch" CACHE PATH "Torch CMake package path")
+endif()
+
 find_package(Torch CONFIG QUIET)
 if(NOT Torch_FOUND)
-    if(NMC_USE_LEGACY_VENDOR_DEPS AND EXISTS "${NMC_TORCH_ROOT}/share/cmake/Torch/TorchConfig.cmake")
-        list(PREPEND CMAKE_PREFIX_PATH "${NMC_TORCH_ROOT}")
+    if(NMC_USE_LEGACY_VENDOR_DEPS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/libtorch/share/cmake/Torch/TorchConfig.cmake")
+        set(Torch_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/libtorch/share/cmake/Torch" CACHE PATH "Torch CMake package path" FORCE)
         find_package(Torch REQUIRED CONFIG)
     else()
         message(
             FATAL_ERROR
-            "LibTorch not found. Use vcpkg (recommended) or enable NMC_USE_LEGACY_VENDOR_DEPS and set NMC_TORCH_ROOT."
+            "LibTorch prebuilt package not found. Expected Torch_DIR='${Torch_DIR}'. "
+            "Run ./tools/setup_libtorch.sh (recommended) or set Torch_DIR manually."
         )
     endif()
 endif()
 
-find_package(SQLite3 QUIET)
-if(SQLite3_FOUND)
-    set(NMC_SQLITE_LINK_TARGET SQLite::SQLite3)
-else()
-    find_library(
-        NMC_SQLITE3_LIBRARY
-        NAMES sqlite3 libsqlite3.so.0
-        HINTS /usr/lib /usr/lib/x86_64-linux-gnu /lib /lib/x86_64-linux-gnu
-    )
-    if(NOT NMC_SQLITE3_LIBRARY)
-        message(FATAL_ERROR "SQLite3 runtime library not found")
-    endif()
-    set(NMC_SQLITE_LINK_TARGET "${NMC_SQLITE3_LIBRARY}")
-endif()
+find_package(SQLite3 CONFIG REQUIRED)
+set(NMC_SQLITE_LINK_TARGET SQLite::SQLite3)
 
 set(NMC_WITH_TENSORRT OFF)
-if(NMC_ENABLE_TENSORRT)
+if(ENABLE_TENSORRT)
     set(_nmc_tensorrt_hints)
     if(NMC_TENSORRT_ROOT)
         list(APPEND _nmc_tensorrt_hints "${NMC_TENSORRT_ROOT}")
@@ -148,20 +155,19 @@ if(NMC_ENABLE_TENSORRT)
 
     if(NOT NMC_TENSORRT_INCLUDE_DIR OR NOT NMC_TENSORRT_NVINFER_LIBRARY OR NOT NMC_TENSORRT_PARSER_LIBRARY)
         message(
-            FATAL_ERROR
-            "NMC_ENABLE_TENSORRT=ON, but TensorRT SDK components were not found (NvInfer + nvonnxparser). "
-            "Set NMC_TENSORRT_ROOT/TENSORRT_ROOT to your SDK path."
+            WARNING
+            "ENABLE_TENSORRT=ON but TensorRT SDK components were not found (NvInfer + nvonnxparser). "
+            "Falling back to LibTorch inference backend."
         )
-    endif()
-    if(NOT CUDAToolkit_FOUND AND NOT NMC_TENSORRT_CUDART_LIBRARY)
+    elseif(NOT CUDAToolkit_FOUND AND NOT NMC_TENSORRT_CUDART_LIBRARY)
         message(
-            FATAL_ERROR
-            "NMC_ENABLE_TENSORRT=ON, but CUDA runtime (cudart) was not found. "
-            "Install CUDA toolkit or set NMC_TENSORRT_ROOT/TENSORRT_ROOT with a valid cudart library."
+            WARNING
+            "ENABLE_TENSORRT=ON but CUDA runtime (cudart) was not found. "
+            "Falling back to LibTorch inference backend."
         )
+    else()
+        set(NMC_WITH_TENSORRT ON)
     endif()
-
-    set(NMC_WITH_TENSORRT ON)
 endif()
 
 function(nmc_apply_warning_profile target)
@@ -279,7 +285,7 @@ else()
     message(STATUS "  NMC_EIGEN_ROOT: ${NMC_EIGEN_ROOT}")
 endif()
 message(STATUS "  NMC_ENABLE_MUJOCO: ${NMC_ENABLE_MUJOCO}")
-message(STATUS "  NMC_ENABLE_TENSORRT: ${NMC_ENABLE_TENSORRT}")
+message(STATUS "  ENABLE_TENSORRT: ${ENABLE_TENSORRT}")
 if(NMC_WITH_TENSORRT)
     message(STATUS "  TensorRT include: ${NMC_TENSORRT_INCLUDE_DIR}")
     message(STATUS "  TensorRT nvinfer: ${NMC_TENSORRT_NVINFER_LIBRARY}")
@@ -297,11 +303,7 @@ message(STATUS "  NMC_BUILD_ORBITAL_CORE: ${NMC_BUILD_ORBITAL_CORE}")
 message(STATUS "  NMC_BUILD_ORBITAL_BACKEND: ${NMC_BUILD_ORBITAL_BACKEND}")
 message(STATUS "  NMC_ENABLE_LTO: ${NMC_ENABLE_LTO}")
 message(STATUS "  NMC_PGO_MODE: ${NMC_PGO_MODE}")
-if(SQLite3_FOUND)
-    message(STATUS "  SQLite3 version: ${SQLite3_VERSION}")
-else()
-    message(STATUS "  SQLite3 library: ${NMC_SQLITE3_LIBRARY}")
-endif()
+message(STATUS "  SQLite3 version: ${SQLite3_VERSION}")
 message(STATUS "  Primary CLI target: nmc")
 
 set(NMC_RUNTIME_SOURCES

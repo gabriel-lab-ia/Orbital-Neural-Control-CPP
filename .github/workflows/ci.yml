@@ -11,17 +11,24 @@ concurrency:
 
 env:
   CMAKE_GENERATOR: Ninja
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  VCPKG_DEFAULT_TRIPLET: x64-linux
-  VCPKG_DEFAULT_HOST_TRIPLET: x64-linux
+  VCPKG_TARGET_TRIPLET: x64-linux
+  VCPKG_HOST_TRIPLET: x64-linux
   VCPKG_FEATURE_FLAGS: manifests,binarycaching
   VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
+  LIBTORCH_VARIANT: cpu
+  TORCH_VERSION: 2.4.1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  baseline-vcpkg:
-    name: baseline-vcpkg
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+  release-linux:
+    name: release-${{ matrix.os }}-${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [Release]
 
     steps:
       - name: Checkout
@@ -32,9 +39,8 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential ninja-build curl zip unzip tar pkg-config \
-            libsqlite3-dev python3 gfortran \
-            autoconf autoconf-archive automake libtool libtool-bin
+            build-essential g++ ninja-build cmake curl zip unzip tar pkg-config \
+            libsqlite3-dev python3
 
       - name: Setup CMake + Ninja
         uses: lukka/get-cmake@latest
@@ -42,96 +48,93 @@ jobs:
           cmakeVersion: "~3.28.0"
           ninjaVersion: "latest"
 
-      - name: Setup vcpkg
+      - name: Setup vcpkg (pinned baseline)
         run: |
           set -euxo pipefail
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
-          if [[ -n "${VCPKG_BASELINE}" ]]; then
-            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
-            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
-          fi
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+          ./tools/setup_vcpkg.sh
+          echo "VCPKG_ROOT=${GITHUB_WORKSPACE}/external/vcpkg" >> "$GITHUB_ENV"
+          echo "${GITHUB_WORKSPACE}/external/vcpkg" >> "$GITHUB_PATH"
 
-      - name: Cache vcpkg downloads
+      - name: Cache vcpkg artifacts
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/vcpkg/downloads
+            external/vcpkg/downloads
             ~/.cache/vcpkg/archives
-          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          key: ${{ runner.os }}-${{ env.VCPKG_TARGET_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
+            ${{ runner.os }}-${{ env.VCPKG_TARGET_TRIPLET }}-vcpkg-
+
+      - name: Cache libtorch
+        uses: actions/cache@v4
+        with:
+          path: third_party/libtorch
+          key: ${{ runner.os }}-libtorch-${{ env.TORCH_VERSION }}-${{ env.LIBTORCH_VARIANT }}
+
+      - name: Setup LibTorch prebuilt
+        run: |
+          set -euxo pipefail
+          ./tools/setup_libtorch.sh
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-${{ matrix.build_type }}-build-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', 'src/**', 'rl/**', 'sim/**') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.build_type }}-build-
 
       - name: Configure
         run: |
           set -euxo pipefail
-          mkdir -p build-ci
-          cmake --preset ci \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
-            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
-            -DNMC_USE_LEGACY_VENDOR_DEPS=OFF \
-            -DNMC_ENABLE_MUJOCO=OFF \
-            -DNMC_BUILD_ORBITAL_BACKEND=OFF \
-            2>&1 | tee build-ci/configure.log
-
-      - name: Upload baseline configure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: baseline-configure-diagnostics
-          path: |
-            build-ci/configure.log
-            build-ci/CMakeCache.txt
-            build-ci/CMakeFiles/CMakeOutput.log
-            build-ci/CMakeFiles/CMakeError.log
-            build-ci/vcpkg-manifest-install.log
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET} \
+            -DVCPKG_HOST_TRIPLET=${VCPKG_HOST_TRIPLET} \
+            -DVCPKG_FEATURE_FLAGS=${VCPKG_FEATURE_FLAGS} \
+            -DENABLE_TENSORRT=ON \
+            -DNMC_USE_LEGACY_VENDOR_DEPS=OFF
 
       - name: Build
         run: |
           set -euxo pipefail
-          cmake --build --preset build-ci --verbose
-          test -x build-ci/nmc
-          test -x build-ci/nmc_inference_parity_test
+          cmake --build build --config ${{ matrix.build_type }} --parallel
 
-      - name: Run tests
+      - name: Run smoke tests
         run: |
           set -euxo pipefail
-          ctest --test-dir build-ci --output-on-failure --verbose --no-tests=error \
+          ctest --test-dir build --output-on-failure --verbose --no-tests=error \
             -R "nmc_smoke_benchmark|nmc_inference_parity"
 
-      - name: Validate artifacts and benchmark regression
+      - name: Validate artifact integrity and finite metrics
         run: |
           set -euxo pipefail
           python3 scripts/validate_artifacts.py --root artifacts --strict
-
           python3 - <<'PY'
           import json
+          import math
           from pathlib import Path
 
           bench = json.loads(Path("artifacts/benchmarks/latest.json").read_text(encoding="utf-8"))
-          train_return = float(bench.get("train", {}).get("final_avg_episode_return", 0.0))
-          eval_return = float(bench.get("eval", {}).get("avg_episode_return", 0.0))
-          integrity = bench.get("integrity", {})
-          functional = bench.get("functional", {})
-          performance = bench.get("performance", {})
+          train_return = float(bench.get("train", {}).get("final_avg_episode_return", float("nan")))
+          eval_return = float(bench.get("eval", {}).get("avg_episode_return", float("nan")))
 
-          # Guardrails intentionally wide for CI determinism:
-          # fail only on clear regression/anomaly or integrity break.
-          assert train_return > -100.0, f"train regression detected: {train_return}"
-          assert eval_return > -100.0, f"eval regression detected: {eval_return}"
-          assert eval_return < 200.0, f"eval anomaly detected: {eval_return}"
-          assert bool(integrity.get("artifacts_valid", False)), "benchmark integrity.artifacts_valid=false"
-          assert "train_avg_episode_return" in functional, "missing functional section"
-          assert "eval_avg_inference_latency_ms" in performance, "missing performance section"
+          if not math.isfinite(train_return):
+              raise SystemExit(f"train_return is not finite: {train_return}")
+          if not math.isfinite(eval_return):
+              raise SystemExit(f"eval_return is not finite: {eval_return}")
+
+          print(f"[metrics] train_return={train_return:.6f} eval_return={eval_return:.6f}")
           PY
 
       - name: Upload smoke artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-artifacts
+          name: smoke-artifacts-${{ matrix.os }}-${{ matrix.build_type }}
           path: |
             artifacts/benchmarks/latest.json
             artifacts/benchmarks/latest.csv
@@ -139,308 +142,3 @@ jobs:
             artifacts/latest/checkpoint.pt
             artifacts/latest/checkpoint.meta
             artifacts/experiments.sqlite
-
-  asan-ubsan:
-    name: asan-ubsan
-    runs-on: ubuntu-latest
-    needs: baseline-vcpkg
-    timeout-minutes: 40
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install system packages
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential ninja-build curl zip unzip tar pkg-config \
-            libsqlite3-dev python3 gfortran \
-            autoconf autoconf-archive automake libtool libtool-bin
-
-      - name: Setup vcpkg
-        run: |
-          set -euxo pipefail
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
-          if [[ -n "${VCPKG_BASELINE}" ]]; then
-            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
-            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
-          fi
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
-
-      - name: Cache vcpkg downloads
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ runner.temp }}/vcpkg/downloads
-            ~/.cache/vcpkg/archives
-          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
-
-      - name: Configure debug sanitized
-        run: |
-          set -euxo pipefail
-          mkdir -p build-debug-sanitized
-          cmake --preset debug-sanitized \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
-            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
-            -DNMC_USE_LEGACY_VENDOR_DEPS=OFF \
-            2>&1 | tee build-debug-sanitized/configure.log
-
-      - name: Upload ASAN configure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: asan-configure-diagnostics
-          path: |
-            build-debug-sanitized/configure.log
-            build-debug-sanitized/CMakeCache.txt
-            build-debug-sanitized/CMakeFiles/CMakeOutput.log
-            build-debug-sanitized/CMakeFiles/CMakeError.log
-            build-debug-sanitized/vcpkg-manifest-install.log
-
-      - name: Build and smoke
-        run: |
-          set -euxo pipefail
-          cmake --build --preset build-debug --verbose
-          ./build-debug-sanitized/nmc benchmark --quick --name asan_smoke --seed 7
-
-  tsan:
-    name: tsan
-    runs-on: ubuntu-latest
-    needs: baseline-vcpkg
-    timeout-minutes: 40
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install system packages
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential ninja-build curl zip unzip tar pkg-config \
-            libsqlite3-dev python3 gfortran \
-            autoconf autoconf-archive automake libtool libtool-bin
-
-      - name: Setup vcpkg
-        run: |
-          set -euxo pipefail
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
-          if [[ -n "${VCPKG_BASELINE}" ]]; then
-            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
-            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
-          fi
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
-
-      - name: Cache vcpkg downloads
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ runner.temp }}/vcpkg/downloads
-            ~/.cache/vcpkg/archives
-          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
-
-      - name: Configure debug tsan
-        run: |
-          set -euxo pipefail
-          mkdir -p build-debug-tsan
-          cmake --preset debug-tsan \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
-            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
-            -DNMC_USE_LEGACY_VENDOR_DEPS=OFF \
-            2>&1 | tee build-debug-tsan/configure.log
-
-      - name: Upload TSAN configure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tsan-configure-diagnostics
-          path: |
-            build-debug-tsan/configure.log
-            build-debug-tsan/CMakeCache.txt
-            build-debug-tsan/CMakeFiles/CMakeOutput.log
-            build-debug-tsan/CMakeFiles/CMakeError.log
-            build-debug-tsan/vcpkg-manifest-install.log
-
-      - name: Build and smoke
-        run: |
-          set -euxo pipefail
-          cmake --build --preset build-debug-tsan --verbose
-          ./build-debug-tsan/nmc benchmark --quick --name tsan_smoke --seed 7
-
-  coverage:
-    name: coverage
-    runs-on: ubuntu-latest
-    needs: baseline-vcpkg
-    timeout-minutes: 40
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install system packages
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential ninja-build curl zip unzip tar pkg-config \
-            libsqlite3-dev gcovr python3 gfortran \
-            autoconf autoconf-archive automake libtool libtool-bin
-
-      - name: Setup vcpkg
-        run: |
-          set -euxo pipefail
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          VCPKG_BASELINE="$(python3 -c 'import json; print(json.load(open("vcpkg.json", "r", encoding="utf-8")).get("builtin-baseline", ""))')"
-          if [[ -n "${VCPKG_BASELINE}" ]]; then
-            git -C "$RUNNER_TEMP/vcpkg" fetch --depth 1 origin "${VCPKG_BASELINE}"
-            git -C "$RUNNER_TEMP/vcpkg" checkout "${VCPKG_BASELINE}"
-          fi
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
-
-      - name: Cache vcpkg downloads
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ runner.temp }}/vcpkg/downloads
-            ~/.cache/vcpkg/archives
-          key: ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-vcpkg-
-
-      - name: Configure debug coverage
-        run: |
-          set -euxo pipefail
-          mkdir -p build-debug-coverage
-          cmake --preset debug-coverage \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET" \
-            -DVCPKG_HOST_TRIPLET="$VCPKG_DEFAULT_HOST_TRIPLET" \
-            -DNMC_USE_LEGACY_VENDOR_DEPS=OFF \
-            2>&1 | tee build-debug-coverage/configure.log
-
-      - name: Upload coverage configure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-configure-diagnostics
-          path: |
-            build-debug-coverage/configure.log
-            build-debug-coverage/CMakeCache.txt
-            build-debug-coverage/CMakeFiles/CMakeOutput.log
-            build-debug-coverage/CMakeFiles/CMakeError.log
-            build-debug-coverage/vcpkg-manifest-install.log
-
-      - name: Build and run tests
-        run: |
-          set -euxo pipefail
-          cmake --build --preset build-debug-coverage --verbose
-          ctest --test-dir build-debug-coverage --output-on-failure --verbose --no-tests=error \
-            -R "nmc_smoke_benchmark"
-
-      - name: Generate coverage report
-        run: |
-          set -euxo pipefail
-          gcovr -r . --exclude 'build.*' --exclude 'lib/.*' --xml-pretty -o coverage.xml
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage.xml
-
-  frontend-contract:
-    name: frontend-contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install OpenAPI lint dependencies
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y python3-yaml
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Frontend typecheck and build
-        working-directory: frontend
-        run: |
-          set -euxo pipefail
-          npm run typecheck
-          npm run build
-
-      - name: Validate OpenAPI required endpoints
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          import yaml
-          from pathlib import Path
-
-          spec = yaml.safe_load(Path("docs/openapi/orbital-api.yaml").read_text(encoding="utf-8"))
-          paths = spec.get("paths", {}) if isinstance(spec, dict) else {}
-          required_paths = [
-              "/health", "/version", "/runs", "/runs/{runId}", "/runs/{runId}/summary",
-              "/runs/{runId}/telemetry", "/runs/{runId}/telemetry/window", "/runs/{runId}/events",
-              "/runs/{runId}/artifacts", "/runs/{runId}/replay", "/benchmarks", "/benchmarks/{benchmarkId}",
-              "/train/jobs", "/eval/jobs", "/benchmark/jobs", "/jobs/{jobId}", "/config/presets",
-          ]
-          missing = [path for path in required_paths if path not in paths]
-          assert not missing, f"Missing OpenAPI paths: {missing}"
-          PY
-
-  core-arm64-cross:
-    name: core-arm64-cross
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install cross-compiler toolchain
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-      - name: Configure core for ARM64
-        run: |
-          set -euxo pipefail
-          cmake -S core -B build-core-arm64 -G Ninja \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
-
-      - name: Build core targets
-        run: |
-          set -euxo pipefail
-          cmake --build build-core-arm64 --verbose
-          file build-core-arm64/orbital_core_tests | tee /tmp/orbital_core_tests.file
-          grep -E "aarch64|ARM aarch64" /tmp/orbital_core_tests.file

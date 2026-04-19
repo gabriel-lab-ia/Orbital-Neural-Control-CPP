@@ -1,15 +1,11 @@
 {
-  "name": "orbital-neural-control-cpp",
+  "name": "orbital-neural-control",
   "version-string": "0.4.1",
-  "description": "C++20 orbital autonomy/control runtime with PPO, deterministic artifacts, and telemetry contracts.",
+  "description": "Deterministic C++20 orbital RL/control runtime with reproducible artifact and telemetry contracts.",
   "builtin-baseline": "d64c795ed9ba5ecaa52725213eb95de9436c748a",
   "dependencies": [
     "eigen3",
-    "sqlite3",
-    {
-      "name": "libtorch",
-      "default-features": false
-    }
+    "sqlite3"
   ],
   "features": {
     "backend": {

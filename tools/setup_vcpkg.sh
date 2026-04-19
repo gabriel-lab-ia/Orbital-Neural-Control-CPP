@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VCPKG_ROOT_DEFAULT="${HOME}/.vcpkg"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+VCPKG_ROOT_DEFAULT="${REPO_ROOT}/external/vcpkg"
 VCPKG_ROOT_PATH="${VCPKG_ROOT:-${VCPKG_ROOT_DEFAULT}}"
 
 if [[ ! -d "${VCPKG_ROOT_PATH}/.git" ]]; then
   echo "[setup_vcpkg] Cloning vcpkg into ${VCPKG_ROOT_PATH}"
+  mkdir -p "$(dirname "${VCPKG_ROOT_PATH}")"
   git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT_PATH}"
 else
   echo "[setup_vcpkg] Reusing existing vcpkg at ${VCPKG_ROOT_PATH}"

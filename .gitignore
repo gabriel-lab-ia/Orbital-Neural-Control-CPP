@@ -14,6 +14,8 @@
 /build-tensorrt/
 /compile_commands.json
 .vcpkg/
+/external/vcpkg/
+/external/
 /vcpkg_installed/
 *.o
 *.obj
@@ -57,6 +59,8 @@ MUJOCO_LOG.TXT
 
 # Public repository dependency strategy
 lib/libtorch/
+/third_party/libtorch/
+/third_party/.cache/
 
 # Python / MLflow local state
 .venv/
