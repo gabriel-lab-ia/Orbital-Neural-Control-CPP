@@ -3,7 +3,19 @@ cmake_minimum_required(VERSION 3.26)
 project(OrbitalBackend LANGUAGES CXX)
 
 find_package(Boost CONFIG REQUIRED COMPONENTS system json)
-find_package(SQLite3 CONFIG REQUIRED)
+set(ORBITAL_SQLITE_TARGET "")
+find_package(SQLite3 CONFIG QUIET)
+if(TARGET SQLite::SQLite3)
+    set(ORBITAL_SQLITE_TARGET SQLite::SQLite3)
+else()
+    find_package(unofficial-sqlite3 CONFIG REQUIRED)
+    if(TARGET unofficial::sqlite3::sqlite3)
+        set(ORBITAL_SQLITE_TARGET unofficial::sqlite3::sqlite3)
+    endif()
+endif()
+if(NOT ORBITAL_SQLITE_TARGET)
+    message(FATAL_ERROR "SQLite3 target not found (expected SQLite::SQLite3 or unofficial::sqlite3::sqlite3)")
+endif()
 
 set(ORBITAL_BACKEND_SOURCES
     src/main.cpp
@@ -29,7 +41,7 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(orbital_backend PRIVATE Boost::system Boost::json SQLite::SQLite3 pthread)
+target_link_libraries(orbital_backend PRIVATE Boost::system Boost::json ${ORBITAL_SQLITE_TARGET} pthread)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(
