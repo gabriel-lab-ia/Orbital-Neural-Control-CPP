@@ -9,7 +9,7 @@ VCPKG_ROOT_PATH="${VCPKG_ROOT:-${VCPKG_ROOT_DEFAULT}}"
 if [[ ! -d "${VCPKG_ROOT_PATH}/.git" ]]; then
   echo "[setup_vcpkg] Cloning vcpkg into ${VCPKG_ROOT_PATH}"
   mkdir -p "$(dirname "${VCPKG_ROOT_PATH}")"
-  git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT_PATH}"
+  git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT_PATH}"
 else
   echo "[setup_vcpkg] Reusing existing vcpkg at ${VCPKG_ROOT_PATH}"
 fi
@@ -19,7 +19,8 @@ if command -v python3 >/dev/null 2>&1; then
   if [[ -n "${VCPKG_BASELINE}" ]]; then
     if ! git -C "${VCPKG_ROOT_PATH}" cat-file -e "${VCPKG_BASELINE}^{commit}" 2>/dev/null; then
       echo "[setup_vcpkg] Fetching pinned baseline ${VCPKG_BASELINE}"
-      git -C "${VCPKG_ROOT_PATH}" fetch --depth 1 origin "${VCPKG_BASELINE}"
+      git -C "${VCPKG_ROOT_PATH}" fetch --depth 1 origin "${VCPKG_BASELINE}" || \
+        git -C "${VCPKG_ROOT_PATH}" fetch origin --tags --prune
     fi
     git -C "${VCPKG_ROOT_PATH}" checkout "${VCPKG_BASELINE}"
   fi
