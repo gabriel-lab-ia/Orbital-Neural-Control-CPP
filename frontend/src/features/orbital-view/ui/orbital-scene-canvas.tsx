@@ -4,13 +4,16 @@ import { Float, Line, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 import type { OrbitPathPoint } from "@/entities/orbit/model/types";
 import { createProceduralEarthTextures } from "@/features/orbital-view/lib/procedural-earth-texture";
+import type { CameraMode } from "@/store/mission-store";
 
 interface OrbitalSceneCanvasProps {
   orbitPath: OrbitPathPoint[];
   currentPoint: OrbitPathPoint;
+  cameraMode: CameraMode;
 }
 
 const SCENE_SCALE = 1 / 1900;
@@ -146,10 +149,31 @@ function AtmosphereGlow(): JSX.Element {
   );
 }
 
-function EarthScene({ orbitPath, currentPoint }: OrbitalSceneCanvasProps): JSX.Element {
+function cameraTargetByMode(mode: CameraMode, satellitePosition: [number, number, number]): THREE.Vector3 {
+  if (mode === "spacecraft_follow") {
+    return new THREE.Vector3(satellitePosition[0], satellitePosition[1], satellitePosition[2]);
+  }
+  return new THREE.Vector3(0, 0, 0);
+}
+
+function cameraPositionByMode(mode: CameraMode, satellitePosition: [number, number, number]): THREE.Vector3 {
+  if (mode === "spacecraft_follow") {
+    return new THREE.Vector3(satellitePosition[0] + 2.1, satellitePosition[1] + 1.3, satellitePosition[2] + 2.2);
+  }
+  if (mode === "earth_lock") {
+    return new THREE.Vector3(0, 6.2, 10.6);
+  }
+  if (mode === "free_inspect") {
+    return new THREE.Vector3(0, 9, 14);
+  }
+  return new THREE.Vector3(0, 4.8, 10.4);
+}
+
+function EarthScene({ orbitPath, currentPoint, cameraMode }: OrbitalSceneCanvasProps): JSX.Element {
   const earthRef = useRef<THREE.Mesh>(null);
   const cloudRef = useRef<THREE.Mesh>(null);
   const satelliteRef = useRef<THREE.Mesh>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const trajectoryPoints = useMemo(() => orbitPath.map(toSceneCoordinates), [orbitPath]);
   const satellitePosition = toSceneCoordinates(currentPoint);
@@ -169,6 +193,15 @@ function EarthScene({ orbitPath, currentPoint }: OrbitalSceneCanvasProps): JSX.E
       const pulse = 1 + Math.sin(state.clock.elapsedTime * 4.2) * 0.08;
       satelliteRef.current.scale.setScalar(pulse);
     }
+
+    const target = cameraTargetByMode(cameraMode, satellitePosition);
+    const position = cameraPositionByMode(cameraMode, satellitePosition);
+
+    if (cameraMode !== "free_inspect") {
+      state.camera.position.lerp(position, 0.04);
+      controlsRef.current?.target.lerp(target, 0.08);
+      controlsRef.current?.update();
+    }
   });
 
   return (
@@ -177,8 +210,8 @@ function EarthScene({ orbitPath, currentPoint }: OrbitalSceneCanvasProps): JSX.E
       <ambientLight intensity={0.08} />
       <hemisphereLight intensity={0.2} color="#8ec7ff" groundColor="#02040a" />
 
-      <directionalLight position={[10, 3.8, 8]} intensity={2.15} color="#ffffff" />
-      <directionalLight position={[-11, -4, -8]} intensity={0.1} color="#3764a8" />
+      <directionalLight position={[10, 3.8, 8]} intensity={1.95} color="#ffffff" />
+      <directionalLight position={[-11, -4, -8]} intensity={0.08} color="#30568e" />
 
       <mesh ref={earthRef} rotation={[0, Math.PI * 0.24, 0]}>
         <sphereGeometry args={[EARTH_RADIUS, 128, 128]} />
@@ -230,29 +263,30 @@ function EarthScene({ orbitPath, currentPoint }: OrbitalSceneCanvasProps): JSX.E
         <meshBasicMaterial color="#22557b" transparent opacity={0.4} side={THREE.DoubleSide} />
       </mesh>
 
-      <Stars radius={220} depth={65} count={1900} factor={3.2} saturation={0} fade speed={0.08} />
+      <Stars radius={220} depth={65} count={1200} factor={2.2} saturation={0} fade speed={0.06} />
 
       <OrbitControls
+        ref={controlsRef}
         enablePan
         enableDamping
         dampingFactor={0.06}
         minDistance={4.9}
         maxDistance={17}
-        autoRotate
-        autoRotateSpeed={0.16}
+        autoRotate={cameraMode === "earth_lock"}
+        autoRotateSpeed={0.08}
       />
     </>
   );
 }
 
-export function OrbitalSceneCanvas({ orbitPath, currentPoint }: OrbitalSceneCanvasProps): JSX.Element {
+export function OrbitalSceneCanvas({ orbitPath, currentPoint, cameraMode }: OrbitalSceneCanvasProps): JSX.Element {
   return (
     <Canvas
       camera={{ position: [0, 4.8, 10.4], fov: 36 }}
       dpr={[1, 1.6]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
     >
-      <EarthScene orbitPath={orbitPath} currentPoint={currentPoint} />
+      <EarthScene orbitPath={orbitPath} currentPoint={currentPoint} cameraMode={cameraMode} />
     </Canvas>
   );
 }

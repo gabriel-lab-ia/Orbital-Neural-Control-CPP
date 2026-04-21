@@ -6,6 +6,7 @@ import type { OrbitPathPoint } from "@/entities/orbit/model/types";
 import type { ReplayFrame } from "@/entities/replay/model/types";
 import { formatNumber } from "@/shared/lib/format";
 import { Panel, PanelBody, PanelHeader, PanelTitle } from "@/shared/ui/panel";
+import type { CameraMode } from "@/store/mission-store";
 
 const OrbitalSceneCanvas = lazy(async () => {
   const module = await import("@/features/orbital-view/ui/orbital-scene-canvas");
@@ -15,9 +16,18 @@ const OrbitalSceneCanvas = lazy(async () => {
 interface OrbitalCanvasWidgetProps {
   frame: ReplayFrame;
   orbitPath: OrbitPathPoint[];
+  cameraMode: CameraMode;
+  onCameraModeChange: (mode: CameraMode) => void;
 }
 
-export function OrbitalCanvasWidget({ frame, orbitPath }: OrbitalCanvasWidgetProps): JSX.Element {
+const CAMERA_MODES: readonly CameraMode[] = ["earth_lock", "spacecraft_follow", "mission_replay", "free_inspect"];
+
+export function OrbitalCanvasWidget({
+  frame,
+  orbitPath,
+  cameraMode,
+  onCameraModeChange,
+}: OrbitalCanvasWidgetProps): JSX.Element {
   return (
     <Panel className="h-full overflow-hidden">
       <PanelHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
@@ -37,6 +47,23 @@ export function OrbitalCanvasWidget({ frame, orbitPath }: OrbitalCanvasWidgetPro
             Reward {formatNumber(frame.telemetry.reward, 3)}
           </span>
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+          <span className="text-slate-400">camera</span>
+          {CAMERA_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onCameraModeChange(mode)}
+              className={`rounded-full px-2.5 py-1 ${
+                mode === cameraMode
+                  ? "border border-cyan-300/45 bg-cyan-300/12 text-cyan-100"
+                  : "border border-slate-600/60 bg-black/55 text-slate-300"
+              }`}
+            >
+              {mode.replace("_", " ")}
+            </button>
+          ))}
+        </div>
       </PanelHeader>
 
       <PanelBody className="relative p-0">
@@ -48,9 +75,8 @@ export function OrbitalCanvasWidget({ frame, orbitPath }: OrbitalCanvasWidgetPro
               </div>
             }
           >
-            <OrbitalSceneCanvas orbitPath={orbitPath} currentPoint={frame.orbit} />
+            <OrbitalSceneCanvas orbitPath={orbitPath} currentPoint={frame.orbit} cameraMode={cameraMode} />
           </Suspense>
-          <div className="scanline-overlay" />
         </div>
       </PanelBody>
     </Panel>

@@ -14,6 +14,8 @@ interface ReplayTimelineWidgetProps {
   speed: number;
   events: MissionEventSummary[];
   onTogglePlay: () => void;
+  onStepBackward: () => void;
+  onStepForward: () => void;
   onReset: () => void;
   onFrameChange: (frameIndex: number) => void;
   onSpeedChange: (speed: number) => void;
@@ -27,6 +29,8 @@ export function ReplayTimelineWidget({
   speed,
   events,
   onTogglePlay,
+  onStepBackward,
+  onStepForward,
   onReset,
   onFrameChange,
   onSpeedChange,
@@ -77,6 +81,8 @@ export function ReplayTimelineWidget({
         speed={speed}
         speedOptions={REPLAY_SPEED_OPTIONS}
         onTogglePlay={onTogglePlay}
+        onStepBackward={onStepBackward}
+        onStepForward={onStepForward}
         onReset={onReset}
         onFrameChange={onFrameChange}
         onSpeedChange={onSpeedChange}

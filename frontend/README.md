@@ -1,26 +1,62 @@
-# Frontend Mission Replay
+# Frontend Mission Console
 
-React + TypeScript + Vite mission-control frontend for orbital replay and telemetry inspection.
+Technical mission-control client built with **React + TypeScript + Vite**.
 
-This UI is wired to typed API contracts and can run with backend telemetry or local mock fallback.
+This frontend is an operational console for:
+- run selection
+- replay and live telemetry streaming
+- synchronized 3D orbital visualization
+- mission timeline + event markers
+- benchmark and telemetry inspection
 
-## What is Implemented
+## Runtime Architecture
 
-- Premium dark mission-control layout (desktop-first, responsive)
-- 3D orbital viewport (React Three Fiber + Three.js + OrbitControls)
-- Earth rendering with local high-quality textures when available
-- Fallback procedural Earth textures if texture files are not present
-- Live/replay modes with timeline scrubber and event markers
-- Technical telemetry cards/tables and benchmark summary panel
-- Run Explorer page (`/runs`) for run registry inspection
+The frontend is organized around one shared mission state and one backend contract layer:
 
-## Stack
+```text
+src/
+  api/                  # runtime orchestration (REST snapshot + WS live merge)
+  store/                # global mission store (run/mode/playback/stream state)
+  shared/api/           # generated OpenAPI types + HTTP client
+  entities/             # stable UI domain models and adapters
+  features/             # mission features (orbital view, replay controls, telemetry)
+  widgets/              # composed technical panels
+  pages/                # route-level pages
+```
 
-- React 18 + TypeScript (strict)
-- Vite
-- Three.js + `@react-three/fiber` + `@react-three/drei`
-- TailwindCSS
-- OpenAPI-generated typed API client
+## What Is Implemented (Current)
+
+- React 18 + TypeScript strict mode + Vite
+- OpenAPI-typed backend integration (REST + WebSocket flows)
+- Global mission store for replay/live synchronization
+- 3D Earth viewport with:
+  - day/night textures
+  - cloud layer
+  - normal/specular maps
+  - atmosphere glow
+  - orbit path + spacecraft marker
+  - camera modes (`earth_lock`, `spacecraft_follow`, `mission_replay`, `free_inspect`)
+- Replay controls:
+  - play/pause
+  - step forward/back
+  - scrubber
+  - speed multiplier
+  - keyboard shortcuts (`Space`, `←`, `→`)
+- Mission HUD panels for telemetry and benchmark summaries
+- Run Explorer page (`/runs`)
+
+## Backend Contract Integration
+
+- Source of truth: OpenAPI-generated types under `src/shared/api/generated/`.
+- REST used for initial snapshot/load:
+  - runs
+  - replay payloads
+  - summaries
+- WebSocket used for live stream updates:
+  - telemetry sample
+  - replay chunk
+- Fallback behavior:
+  - if backend endpoints are unavailable, frontend enters degraded mode and uses local replay dataset for demo continuity.
 
 ## Local Run
 
@@ -63,3 +99,9 @@ Set Vite environment variables when using the backend:
 VITE_BACKEND_HTTP=http://localhost:8080
 VITE_BACKEND_WS=ws://localhost:8080
 ```
+
+## Engineering Notes
+
+- Desktop-first layout; still responsive for medium/small screens.
+- 3D renderer is lazy-loaded to avoid inflating initial route bundle.
+- `orbital-scene-canvas` remains the largest chunk by design; heavy rendering is isolated from initial app boot.

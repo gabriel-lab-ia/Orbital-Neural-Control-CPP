@@ -1,6 +1,6 @@
 "use client";
 
-import { Gauge, Pause, Play, RotateCcw } from "lucide-react";
+import { Gauge, Pause, Play, RotateCcw, StepBack, StepForward } from "lucide-react";
 
 import { Panel, PanelBody, PanelHeader, PanelTitle } from "@/shared/ui/panel";
 
@@ -11,6 +11,8 @@ interface ReplayControlsPanelProps {
   speed: number;
   speedOptions: readonly number[];
   onTogglePlay: () => void;
+  onStepBackward: () => void;
+  onStepForward: () => void;
   onReset: () => void;
   onFrameChange: (frameIndex: number) => void;
   onSpeedChange: (speed: number) => void;
@@ -23,6 +25,8 @@ export function ReplayControlsPanel({
   speed,
   speedOptions,
   onTogglePlay,
+  onStepBackward,
+  onStepForward,
   onReset,
   onFrameChange,
   onSpeedChange,
@@ -41,6 +45,24 @@ export function ReplayControlsPanel({
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {isPlaying ? "Pause" : "Play"}
+          </button>
+
+          <button
+            type="button"
+            onClick={onStepBackward}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-600/70 bg-black/55 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-cyan-300/50"
+          >
+            <StepBack className="h-4 w-4" />
+            Step -
+          </button>
+
+          <button
+            type="button"
+            onClick={onStepForward}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-600/70 bg-black/55 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:border-cyan-300/50"
+          >
+            <StepForward className="h-4 w-4" />
+            Step +
           </button>
 
           <button

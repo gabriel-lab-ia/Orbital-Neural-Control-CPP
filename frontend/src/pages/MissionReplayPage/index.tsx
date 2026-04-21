@@ -1,169 +1,60 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
-import type { ReplayFrame, ReplayRunDataset } from "@/entities/replay/model/types";
 import type { RunSummary } from "@/entities/run/model/types";
-import { replayPayloadToDataset } from "@/entities/replay/model/adapters";
-import type { TelemetrySampleDto } from "@/shared/api/generated/orbital-api";
-import { useLiveTelemetryStream } from "@/shared/api/hooks/use-live-telemetry-stream";
-import { useReplayQuery } from "@/shared/api/hooks/use-replay-query";
-import { useRunsQuery } from "@/shared/api/hooks/use-runs-query";
-import { useReplayController } from "@/shared/hooks/use-replay-controller";
-import { MISSION_REPLAY_DATASET_BY_ID, MISSION_REPLAY_DATASETS } from "@/shared/mock/mission-replay.mock";
+import { useMissionDataset, useMissionRuntime } from "@/api/mission-runtime";
+import { MISSION_REPLAY_DATASETS } from "@/shared/mock/mission-replay.mock";
 import { MissionTopbar } from "@/widgets/MissionTopbar/ui/mission-topbar";
 import { OrbitalCanvasWidget } from "@/widgets/OrbitalCanvas/ui/orbital-canvas-widget";
 import { ReplayTimelineWidget } from "@/widgets/ReplayTimeline/ui/replay-timeline-widget";
 import { TelemetrySidebarWidget } from "@/widgets/TelemetrySidebar/ui/telemetry-sidebar-widget";
-
-function toRunSummaryFromApi(runId: string): RunSummary {
-  const fallback = MISSION_REPLAY_DATASET_BY_ID.get(runId)?.run;
-  if (fallback) {
-    return fallback;
-  }
-
-  return {
-    runId,
-    label: runId,
-    mode: "replay",
-    environment: "point_mass",
-    backend: "libtorch_cpu",
-    deterministic: true,
-    totalTimesteps: 0,
-    status: "warning",
-    artifactStatus: "unknown",
-    startedAtIso: new Date().toISOString(),
-  };
-}
-
-function toLiveFrames(run: RunSummary, samples: TelemetrySampleDto[]): ReplayFrame[] {
-  return samples.map((sample, index) => ({
-    frameIndex: index,
-    timestampIso: sample.timestamp,
-    telemetry: {
-      runId: run.runId,
-      environment: run.environment,
-      timestep: sample.step,
-      missionTimeS: sample.mission_time_s,
-      reward: sample.reward,
-      controlMagnitude: sample.control_magnitude,
-      orbitalErrorKm: sample.orbital_error_km,
-      velocityMagnitudeKmS: sample.velocity_magnitude_kmps,
-      policyStd: sample.policy_std,
-      backend: run.backend,
-      deterministic: run.deterministic,
-      positionKm: sample.position_km,
-      velocityKmS: sample.velocity_kmps,
-      controlVector: sample.control_vector,
-      terminated: sample.terminated,
-      truncated: sample.truncated,
-      timestampIso: sample.timestamp,
-    },
-    orbit: {
-      timestep: sample.step,
-      missionTimeS: sample.mission_time_s,
-      positionKm: sample.position_km,
-      velocityKmS: sample.velocity_kmps,
-      orbitalErrorKm: sample.orbital_error_km,
-      controlMagnitude: sample.control_magnitude,
-      reward: sample.reward,
-    },
-  }));
-}
+import { useMissionStore } from "@/store/mission-store";
 
 export function MissionReplayPage(): JSX.Element {
-  const defaultDataset = MISSION_REPLAY_DATASETS[0];
-  if (!defaultDataset) {
+  const fallbackDataset = MISSION_REPLAY_DATASETS[0];
+  if (!fallbackDataset) {
     throw new Error("Mission replay datasets are not configured.");
   }
 
-  const { runs, loading: runsLoading } = useRunsQuery(200);
-  const runIds = runs.map((run) => run.run_id);
+  useMissionRuntime(1400);
+  const { state, dispatch } = useMissionStore();
+  const dataset = useMissionDataset() ?? fallbackDataset;
 
-  const [selectedRunId, setSelectedRunId] = useState(defaultDataset.run.runId);
-  const [mode, setMode] = useState<"replay" | "live">("replay");
+  const frameCount = Math.max(1, dataset.frames.length);
+  const frameIndex = Math.min(state.frameIndex, frameCount - 1);
+  const currentFrame = dataset.frames[frameIndex] ?? dataset.frames[0];
 
   useEffect(() => {
-    if (runIds.length === 0) {
-      return;
-    }
-
-    if (!runIds.includes(selectedRunId)) {
-      setSelectedRunId(runIds[0] ?? defaultDataset.run.runId);
-    }
-  }, [defaultDataset.run.runId, runIds, selectedRunId]);
-
-  const { replay: replayPayload } = useReplayQuery(selectedRunId, 1400);
-  const liveStream = useLiveTelemetryStream({
-    runId: selectedRunId,
-    enabled: mode === "live",
-    maxSamples: 2200,
-  });
-
-  const selectedDataset = useMemo<ReplayRunDataset>(() => {
-    if (replayPayload) {
-      return replayPayloadToDataset(replayPayload);
-    }
-    return MISSION_REPLAY_DATASET_BY_ID.get(selectedRunId) ?? defaultDataset;
-  }, [defaultDataset, replayPayload, selectedRunId]);
-
-  const liveFrames = useMemo(
-    () => toLiveFrames(selectedDataset.run, liveStream.samples),
-    [liveStream.samples, selectedDataset.run],
-  );
-
-  const dataset = useMemo<ReplayRunDataset>(() => {
-    if (mode !== "live" || liveFrames.length === 0) {
-      return selectedDataset;
-    }
-
-    return {
-      ...selectedDataset,
-      frames: liveFrames,
-      orbitPath: liveFrames.map((frame) => frame.orbit),
-      run: {
-        ...selectedDataset.run,
-        label: `${selectedDataset.run.runId} (live stream)`,
-        totalTimesteps: liveFrames.length,
-      },
-      benchmark: {
-        ...selectedDataset.benchmark,
-        totalTimesteps: liveFrames.length,
-      },
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        dispatch({ type: "toggle_playing" });
+        return;
+      }
+      if (event.code === "ArrowRight") {
+        dispatch({ type: "step_frame", delta: 1 });
+        return;
+      }
+      if (event.code === "ArrowLeft") {
+        dispatch({ type: "step_frame", delta: -1 });
+      }
     };
-  }, [liveFrames, mode, selectedDataset]);
-
-  const replay = useReplayController({
-    totalFrames: dataset.frames.length,
-    initialPlaying: true,
-  });
-  const { reset } = replay;
-
-  useEffect(() => {
-    reset();
-  }, [mode, reset, selectedRunId]);
-
-  const currentFrame = dataset.frames[replay.frameIndex] ?? dataset.frames[0];
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dispatch]);
 
   const runsForTopbar = useMemo<RunSummary[]>(() => {
-    if (runs.length === 0) {
+    if (state.runs.length === 0) {
       return MISSION_REPLAY_DATASETS.map((item) => item.run);
     }
-
-    return runs.map((run) => ({
-      ...toRunSummaryFromApi(run.run_id),
-      runId: run.run_id,
-      label: run.run_id,
-      mode: run.mode,
-      environment: run.environment,
-      totalTimesteps: selectedRunId === run.run_id ? dataset.frames.length : 0,
-      status: run.status === "completed" ? "ok" : run.status === "running" ? "running" : "warning",
-      artifactStatus: run.status === "completed" ? "complete" : run.status === "running" ? "partial" : "unknown",
-      startedAtIso: run.started_at,
+    return state.runs.map((run) => ({
+      ...run,
+      totalTimesteps: state.selectedRunId === run.runId ? dataset.frames.length : run.totalTimesteps,
     }));
-  }, [dataset.frames.length, runs, selectedRunId]);
+  }, [dataset.frames.length, state.runs, state.selectedRunId]);
 
-  const selectedRun = runsForTopbar.find((run) => run.runId === selectedRunId) ?? dataset.run;
+  const selectedRun = runsForTopbar.find((run) => run.runId === state.selectedRunId) ?? dataset.run;
 
   if (!currentFrame) {
     return (
@@ -178,7 +69,7 @@ export function MissionReplayPage(): JSX.Element {
     );
   }
 
-  const dataSource = runsLoading ? "loading" : runs.length > 0 ? "backend api" : "mock fallback";
+  const dataSource = state.source === "backend" ? "backend api" : "mock fallback";
 
   return (
     <main className="mission-shell">
@@ -188,13 +79,13 @@ export function MissionReplayPage(): JSX.Element {
         <div className="hud-panel glow-border mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-200/15 px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-slate-300">
           <span>data source: {dataSource}</span>
           <span className="text-slate-500">|</span>
-          <span>mode:</span>
+          <span>mission mode:</span>
 
           <button
             type="button"
-            onClick={() => setMode("replay")}
+            onClick={() => dispatch({ type: "set_mode", mode: "replay" })}
             className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-              mode === "replay"
+              state.mode === "replay"
                 ? "border border-cyan-300/45 bg-cyan-300/14 text-cyan-100"
                 : "border border-slate-600/80 bg-black/50 text-slate-300"
             }`}
@@ -204,9 +95,9 @@ export function MissionReplayPage(): JSX.Element {
 
           <button
             type="button"
-            onClick={() => setMode("live")}
+            onClick={() => dispatch({ type: "set_mode", mode: "live" })}
             className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-              mode === "live"
+              state.mode === "live"
                 ? "border border-cyan-300/45 bg-cyan-300/14 text-cyan-100"
                 : "border border-slate-600/80 bg-black/50 text-slate-300"
             }`}
@@ -215,31 +106,44 @@ export function MissionReplayPage(): JSX.Element {
           </button>
 
           <span className="text-slate-500">|</span>
-          <span className={liveStream.connected ? "text-emerald-200" : "text-amber-200"}>
-            stream: {liveStream.connected ? "connected" : "disconnected"}
+          <span className={state.streamStatus === "live" ? "text-emerald-200" : "text-amber-200"}>
+            stream: {state.streamStatus}
           </span>
-          {liveStream.error ? <span className="text-amber-300">{liveStream.error}</span> : null}
+          <span className="text-slate-500">|</span>
+          <span>playback: Space play/pause, ←/→ step</span>
+          {state.streamError ? <span className="text-amber-300">{state.streamError}</span> : null}
         </div>
 
-        <MissionTopbar runs={runsForTopbar} selectedRun={selectedRun} onSelectRun={setSelectedRunId} />
+        <MissionTopbar
+          runs={runsForTopbar}
+          selectedRun={selectedRun}
+          onSelectRun={(runId) => dispatch({ type: "set_selected_run", runId })}
+        />
 
         <section className="mt-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
-          <OrbitalCanvasWidget frame={currentFrame} orbitPath={dataset.orbitPath} />
+          <OrbitalCanvasWidget
+            frame={currentFrame}
+            orbitPath={dataset.orbitPath}
+            cameraMode={state.cameraMode}
+            onCameraModeChange={(cameraMode) => dispatch({ type: "set_camera_mode", cameraMode })}
+          />
           <TelemetrySidebarWidget frame={currentFrame} run={selectedRun} benchmark={dataset.benchmark} events={dataset.events} />
         </section>
 
         <section className="mt-4">
           <ReplayTimelineWidget
             frame={currentFrame}
-            frameIndex={replay.frameIndex}
-            frameCount={replay.frameCount}
-            isPlaying={replay.isPlaying}
-            speed={replay.speed}
+            frameIndex={frameIndex}
+            frameCount={frameCount}
+            isPlaying={state.isPlaying}
+            speed={state.speed}
             events={dataset.events}
-            onTogglePlay={replay.togglePlaying}
-            onReset={reset}
-            onFrameChange={replay.setFrameIndex}
-            onSpeedChange={replay.setSpeed}
+            onTogglePlay={() => dispatch({ type: "toggle_playing" })}
+            onStepBackward={() => dispatch({ type: "step_frame", delta: -1 })}
+            onStepForward={() => dispatch({ type: "step_frame", delta: 1 })}
+            onReset={() => dispatch({ type: "reset_replay" })}
+            onFrameChange={(nextFrame) => dispatch({ type: "set_frame", frameIndex: nextFrame })}
+            onSpeedChange={(nextSpeed) => dispatch({ type: "set_speed", speed: nextSpeed })}
           />
         </section>
       </div>
