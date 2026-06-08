@@ -24,21 +24,21 @@ std::string artifact_type_from_path(const std::filesystem::path& path) {
 }  // namespace
 
 MissionService::MissionService(
-    persistence::SQLiteStore store,
+    std::unique_ptr<persistence::ExperimentStore> store,
     telemetry::CsvTelemetryStore telemetry_store,
     std::filesystem::path artifact_root
 )
     : store_(std::move(store)),
       telemetry_store_(std::move(telemetry_store)),
-      replay_service_(store_, telemetry_store_),
+      replay_service_(*store_, telemetry_store_),
       artifact_root_(std::move(artifact_root)) {}
 
 std::vector<domain::RunRecord> MissionService::list_runs(const std::int64_t limit, const std::int64_t offset) const {
-    return store_.list_runs(limit, offset);
+    return store_->list_runs(limit, offset);
 }
 
 std::optional<domain::RunRecord> MissionService::get_run(const std::string& run_id) const {
-    return store_.get_run(run_id);
+    return store_->get_run(run_id);
 }
 
 std::vector<domain::TelemetrySample> MissionService::get_telemetry(
@@ -82,18 +82,18 @@ std::vector<domain::EventRecord> MissionService::list_events(
     const std::int64_t limit,
     const std::int64_t offset
 ) const {
-    return store_.list_events(run_id, limit, offset);
+    return store_->list_events(run_id, limit, offset);
 }
 
 std::vector<domain::BenchmarkRecord> MissionService::list_benchmarks(
     const std::int64_t limit,
     const std::int64_t offset
 ) const {
-    return store_.list_benchmarks(limit, offset);
+    return store_->list_benchmarks(limit, offset);
 }
 
 std::optional<domain::BenchmarkRecord> MissionService::get_benchmark(const std::string& benchmark_id_or_name) const {
-    return store_.get_benchmark(benchmark_id_or_name);
+    return store_->get_benchmark(benchmark_id_or_name);
 }
 
 replay::ReplayWindow MissionService::build_replay(const ReplayRequest& request) const {

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orbital-fastapi
+  labels:
+    app.kubernetes.io/name: orbital-fastapi
+    app.kubernetes.io/part-of: orbital-control-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orbital-fastapi
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orbital-fastapi
+        app.kubernetes.io/part-of: orbital-control-platform
+    spec:
+      containers:
+        - name: fastapi
+          image: orbital-fastapi-serving:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: ORBITAL_CPP_CONTROL_ENDPOINT
+              value: "http://orbital-backend:8080"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001

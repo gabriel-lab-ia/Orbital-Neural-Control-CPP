@@ -4,7 +4,7 @@
 
 # Orbital Neural Control CPP
 
-C++20 orbital autonomy/control engineering platform with reproducible PPO workflows (`train`, `eval`, `benchmark`), strict artifact contracts, SQLite telemetry, and optional mission-control API/frontend stack.
+C++20 orbital autonomy/control engineering platform with reproducible PPO workflows (`train`, `eval`, `benchmark`), strict artifact contracts, SQLite local telemetry, optional PostgreSQL-backed backend serving, and optional mission-control API/frontend stack.
 
 ## Technology Stack
 
@@ -13,6 +13,9 @@ C++20 orbital autonomy/control engineering platform with reproducible PPO workfl
   <img alt="LibTorch" src="https://img.shields.io/badge/LibTorch-CPU%20First-ee4c2c?logo=pytorch&logoColor=white" />
   <img alt="PPO" src="https://img.shields.io/badge/RL-PPO-1f6feb" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-Telemetry-003B57?logo=sqlite&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Optional%20Production-4169e1?logo=postgresql&logoColor=white" />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Optional%20Serving-009688?logo=fastapi&logoColor=white" />
+  <img alt="Kubernetes" src="https://img.shields.io/badge/Kubernetes-Starter%20Manifests-326ce5?logo=kubernetes&logoColor=white" />
   <img alt="TensorRT" src="https://img.shields.io/badge/TensorRT-Optional-76B900?logo=nvidia&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white" />
   <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-Runtime-f7df1e?logo=javascript&logoColor=black" />
@@ -34,12 +37,14 @@ C++20 orbital autonomy/control engineering platform with reproducible PPO workfl
 - Deterministic smoke benchmark path.
 - Artifact integrity flow under `artifacts/` (`runs/`, `latest/`, `benchmarks/`).
 - SQLite persistence (`runs`, `episodes`, `events`, `benchmarks`) with extended forward-compatible telemetry tables.
+- Optional backend database selection through `DB_BACKEND=sqlite|postgres`, with SQLite as local/dev default and PostgreSQL as a production-style backend service option.
 
 ### Optional stack modules (not required for baseline `nmc`)
 
 - `backend/` C++ REST + WebSocket service
 - `frontend/` React + TypeScript mission replay console
 - `mlops/` and `training/` orchestration with MLflow
+- `services/fastapi-serving/` optional FastAPI deployment/API layer
 - `core/`, `control/`, `sim/`, `rl/` expansion tracks
 
 ### Roadmap (not marketed as shipped)
@@ -65,6 +70,52 @@ Optional backend architecture:
 - `backend/src/replay`
 - `backend/src/application`
 - `backend/src/transport`
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    subgraph Core["C++20 Orbital Control Core"]
+        Sim["Orbital dynamics / envs"]
+        PPO["PPO reinforcement learning pipeline"]
+        Torch["LibTorch policy inference"]
+        CLI["nmc train / eval / benchmark"]
+        Sim --> PPO
+        PPO --> Torch
+        CLI --> PPO
+        CLI --> Torch
+    end
+
+    Telemetry["Telemetry and artifact layer"]
+    SQLite["SQLite local/dev"]
+    Postgres["PostgreSQL production option"]
+    MLflow["MLflow experiment tracking"]
+    Backend["C++ REST/WebSocket backend"]
+    FastAPI["Optional FastAPI serving layer"]
+    Compose["Docker Compose local stack"]
+    K8s["Kubernetes starter deployment path"]
+
+    PPO --> Telemetry
+    Torch --> Telemetry
+    Telemetry --> SQLite
+    PPO --> MLflow
+    Backend --> Telemetry
+    Backend --> SQLite
+    Backend --> Postgres
+    FastAPI -. "stub now / future binding or RPC" .-> Torch
+    Compose --> Backend
+    Compose --> FastAPI
+    Compose --> MLflow
+    Compose --> Postgres
+    K8s --> Backend
+    K8s --> FastAPI
+    K8s --> MLflow
+    K8s --> Postgres
+```
+
+## Engineering Highlights
+
+This project demonstrates a C++20 systems-oriented AI architecture with a reinforcement learning control pipeline, LibTorch inference, MLflow experiment tracking, database abstraction for SQLite/PostgreSQL, optional API serving with FastAPI, containerized deployment with Docker, starter Kubernetes deployment manifests, and a CI/CD and reproducibility mindset. The implementation also emphasizes security-aware engineering practices such as environment-based configuration, parameterized SQL, input validation, ignored local secrets, and non-root service containers where practical.
 
 ## Quickstart (Repository Root)
 
@@ -223,6 +274,25 @@ Bring up optional services:
 docker compose up --build -d mlflow backend frontend
 ```
 
+Run the backend with SQLite, the default local/dev option:
+
+```bash
+DB_BACKEND=sqlite SQLITE_PATH=artifacts/experiments.sqlite docker compose up --build backend
+```
+
+Run a production-like local stack with PostgreSQL:
+
+```bash
+POSTGRES_PASSWORD=change-me DB_BACKEND=postgres docker compose --profile postgres up --build postgres backend
+```
+
+Run the optional FastAPI serving layer:
+
+```bash
+docker compose --profile api up --build fastapi-serving
+curl http://localhost:8000/health
+```
+
 Run training service:
 
 ```bash
@@ -238,6 +308,77 @@ docker compose logs -f mlflow backend frontend
 Important hygiene:
 
 - `.dockerignore` excludes host build outputs (`build*/`, `CMakeCache.txt`, `CMakeFiles/`, `artifacts/`) to prevent cache contamination.
+
+## Database Configuration
+
+SQLite remains the default for local development. Configure it with:
+
+```bash
+DB_BACKEND=sqlite
+SQLITE_PATH=artifacts/experiments.sqlite
+```
+
+PostgreSQL can be selected for production-like testing or deployments:
+
+```bash
+DB_BACKEND=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=orbital
+POSTGRES_USER=orbital
+POSTGRES_PASSWORD=replace-me
+```
+
+Credentials are read only from the environment. The backend applies safe connection and statement timeouts and uses parameterized queries for runtime reads.
+
+Current scope: `DB_BACKEND` applies to the optional C++ backend service. The baseline `nmc` train/eval/benchmark CLI still writes local artifacts and SQLite experiment telemetry; a PostgreSQL writer for the CLI telemetry path is a remaining integration step.
+
+## FastAPI Serving Layer
+
+`services/fastapi-serving/` contains an optional Python API layer for deployment experiments:
+
+- `GET /health`
+- `GET /ready`
+- `POST /control-step`
+- `POST /predict`
+
+The FastAPI service has Pydantic request/response models and input validation. Until a `pybind11` binding or internal RPC bridge to the C++/LibTorch control pipeline is implemented, `/control-step` returns a deterministic documented stub with TODO comments in code.
+
+Run tests:
+
+```bash
+cd services/fastapi-serving
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest
+```
+
+## Kubernetes
+
+Starter manifests live in `k8s/`:
+
+```bash
+cp k8s/secret.example.yaml /tmp/orbital-secret.yaml
+# Edit /tmp/orbital-secret.yaml before applying; do not use the placeholder values.
+kubectl apply -f /tmp/orbital-secret.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/postgres-statefulset.yaml -f k8s/postgres-service.yaml
+kubectl apply -f k8s/mlflow-deployment.yaml -f k8s/mlflow-service.yaml
+kubectl apply -f k8s/backend-deployment.yaml -f k8s/backend-service.yaml
+kubectl apply -f k8s/fastapi-deployment.yaml -f k8s/fastapi-service.yaml
+```
+
+Before applying to a real cluster, replace `secret.example.yaml` values with environment-specific secrets and update image names. Do not apply the placeholder secret directly. These manifests are production-oriented starter files with resource limits and probes, but they are not hardened production infrastructure. Review TLS, ingress, network policies, persistent storage classes, backups, RBAC, and secret rotation for your cluster.
+
+## Security Notes
+
+- Do not commit `.env` or real credentials.
+- Use environment variables for database and service configuration.
+- SQLite is suitable for local/dev workflows; PostgreSQL is the production-style option.
+- Backend SQL uses prepared/parameterized queries for runtime reads.
+- FastAPI endpoints validate run IDs, vector sizes, numeric bounds, and supported backend names.
+- Docker images avoid root where practical for the backend and FastAPI service.
+- Kubernetes uses `secret.example.yaml` as a template only; no real secrets are included.
+- See `SECURITY.md` for reporting guidance and known non-production limitations.
 
 ## Artifact and Persistence Contract
 
@@ -265,6 +406,7 @@ artifacts/
 DB docs:
 
 - `docs/database/sqlite-telemetry.md`
+- `backend/src/persistence/migrations/postgres_init.sql`
 
 Run ID policy:
 
@@ -278,6 +420,7 @@ Replay docs:
 
 ## Documentation Index
 
+- `SECURITY.md`
 - `docs/build.md`
 - `docs/dependency-diagram.md`
 - `docs/architecture.md`
@@ -296,4 +439,5 @@ Replay docs:
 - TensorRT native path requires build with `ENABLE_TENSORRT=ON` and local TensorRT + CUDA runtime libraries
 - if TensorRT initialization fails, runtime automatically falls back to LibTorch to preserve pipeline availability
 - backend/frontend remain optional stack modules
+- PostgreSQL support currently covers the optional backend service read/API path; the baseline CLI telemetry writer remains SQLite-backed
 - frontend 3D globe is mission-UI oriented and not a full geospatial GIS engine

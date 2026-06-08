@@ -12,7 +12,8 @@
       "description": "Optional backend stack dependencies.",
       "dependencies": [
         "boost-system",
-        "boost-json"
+        "boost-json",
+        "libpq"
       ]
     }
   }

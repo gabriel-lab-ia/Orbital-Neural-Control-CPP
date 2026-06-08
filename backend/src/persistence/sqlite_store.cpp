@@ -44,9 +44,13 @@ std::string text_column(sqlite3_stmt* stmt, const int index) {
 
 SQLiteStore::SQLiteStore(std::filesystem::path db_path)
     : db_path_(std::move(db_path)) {
+    if (!db_path_.parent_path().empty()) {
+        std::filesystem::create_directories(db_path_.parent_path());
+    }
     const int rc = sqlite3_open(db_path_.string().c_str(), &db_);
     if (rc != SQLITE_OK || db_ == nullptr) {
-        throw std::runtime_error("unable to open sqlite db: " + db_path_.string());
+        const std::string detail = db_ != nullptr ? sqlite3_errmsg(db_) : "sqlite3_open returned null handle";
+        throw std::runtime_error("unable to open sqlite db '" + db_path_.string() + "': " + detail);
     }
 
     check_sqlite(sqlite3_exec(db_, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr), db_, "pragma_wal");
