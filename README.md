@@ -4,7 +4,7 @@
 
 # Orbital Neural Control CPP
 
-C++20 orbital autonomy/control engineering platform with reproducible PPO workflows (`train`, `eval`, `benchmark`), strict artifact contracts, SQLite telemetry, and optional mission-control API/frontend stack.
+C++20 orbital autonomy/control engineering platform with reproducible PPO workflows (`train`, `eval`, `benchmark`), strict artifact contracts, SQLite local telemetry, optional PostgreSQL-backed backend serving, and optional mission-control API/frontend stack.
 
 ## Technology Stack
 
