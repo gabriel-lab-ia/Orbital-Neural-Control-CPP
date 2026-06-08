@@ -1,25 +1,19 @@
 #pragma once
 
-#include <filesystem>
-#include <cstdint>
-#include <optional>
-#include <string>
-#include <vector>
-
-#include "domain/types.h"
+#include "persistence/database_config.h"
 #include "persistence/experiment_store.h"
 
-struct sqlite3;
+struct pg_conn;
 
 namespace orbital::backend::persistence {
 
-class SQLiteStore final : public ExperimentStore {
+class PostgresStore final : public ExperimentStore {
 public:
-    explicit SQLiteStore(std::filesystem::path db_path);
-    ~SQLiteStore();
+    explicit PostgresStore(PostgresConfig config);
+    ~PostgresStore() override;
 
-    SQLiteStore(const SQLiteStore&) = delete;
-    SQLiteStore& operator=(const SQLiteStore&) = delete;
+    PostgresStore(const PostgresStore&) = delete;
+    PostgresStore& operator=(const PostgresStore&) = delete;
 
     [[nodiscard]] std::vector<domain::RunRecord> list_runs(std::int64_t limit, std::int64_t offset) const override;
     [[nodiscard]] std::optional<domain::RunRecord> get_run(const std::string& run_id) const override;
@@ -30,14 +24,20 @@ public:
         std::int64_t offset
     ) const override;
 
-    [[nodiscard]] std::vector<domain::BenchmarkRecord> list_benchmarks(std::int64_t limit, std::int64_t offset) const override;
+    [[nodiscard]] std::vector<domain::BenchmarkRecord> list_benchmarks(
+        std::int64_t limit,
+        std::int64_t offset
+    ) const override;
     [[nodiscard]] std::optional<domain::BenchmarkRecord> get_benchmark(
         const std::string& benchmark_id_or_name
     ) const override;
 
 private:
-    std::filesystem::path db_path_;
-    sqlite3* db_ = nullptr;
+    void connect();
+    void initialize_schema() const;
+
+    PostgresConfig config_;
+    pg_conn* conn_ = nullptr;
 };
 
 }  // namespace orbital::backend::persistence

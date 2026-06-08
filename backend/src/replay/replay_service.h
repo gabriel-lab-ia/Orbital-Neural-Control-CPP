@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "domain/types.h"
-#include "persistence/sqlite_store.h"
+#include "persistence/experiment_store.h"
 #include "telemetry/csv_telemetry_store.h"
 
 namespace orbital::backend::replay {
@@ -19,7 +19,7 @@ struct ReplayWindow {
 
 class ReplayService {
 public:
-    ReplayService(const persistence::SQLiteStore& store, const telemetry::CsvTelemetryStore& telemetry_store);
+    ReplayService(const persistence::ExperimentStore& store, const telemetry::CsvTelemetryStore& telemetry_store);
 
     [[nodiscard]] ReplayWindow build_window(
         const std::string& run_id,
@@ -30,7 +30,7 @@ public:
     ) const;
 
 private:
-    const persistence::SQLiteStore& store_;
+    const persistence::ExperimentStore& store_;
     const telemetry::CsvTelemetryStore& telemetry_store_;
 };
 

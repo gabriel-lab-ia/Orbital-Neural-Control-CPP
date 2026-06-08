@@ -2,7 +2,7 @@
 
 namespace orbital::backend::replay {
 
-ReplayService::ReplayService(const persistence::SQLiteStore& store, const telemetry::CsvTelemetryStore& telemetry_store)
+ReplayService::ReplayService(const persistence::ExperimentStore& store, const telemetry::CsvTelemetryStore& telemetry_store)
     : store_(store), telemetry_store_(telemetry_store) {}
 
 ReplayWindow ReplayService::build_window(

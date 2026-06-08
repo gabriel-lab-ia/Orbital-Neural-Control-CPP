@@ -1,7 +1,7 @@
 FROM ubuntu:24.04 AS build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake ninja-build libboost-all-dev libsqlite3-dev && \
+    build-essential cmake ninja-build libboost-all-dev libsqlite3-dev libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
@@ -11,11 +11,14 @@ RUN cmake -S backend -B build/backend -G Ninja && \
     cmake --build build/backend --target orbital_backend
 
 FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y --no-install-recommends libboost-system-dev libsqlite3-0 ca-certificates && \
+RUN apt-get update && apt-get install -y --no-install-recommends libboost-system-dev libboost-json-dev libsqlite3-0 libpq5 ca-certificates && \
+    groupadd --system --gid 10001 orbital && useradd --system --uid 10001 --gid orbital --home-dir /workspace orbital && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 COPY --from=build /workspace/build/backend/orbital_backend /workspace/orbital_backend
+RUN chown -R orbital:orbital /workspace
+USER 10001
 
 EXPOSE 8080
 CMD ["/workspace/orbital_backend"]

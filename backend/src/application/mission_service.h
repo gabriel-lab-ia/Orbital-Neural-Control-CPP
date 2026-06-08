@@ -1,12 +1,13 @@
 #pragma once
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "domain/types.h"
-#include "persistence/sqlite_store.h"
+#include "persistence/experiment_store.h"
 #include "replay/replay_service.h"
 #include "telemetry/csv_telemetry_store.h"
 
@@ -23,7 +24,7 @@ struct ReplayRequest {
 class MissionService {
 public:
     MissionService(
-        persistence::SQLiteStore store,
+        std::unique_ptr<persistence::ExperimentStore> store,
         telemetry::CsvTelemetryStore telemetry_store,
         std::filesystem::path artifact_root
     );
@@ -57,7 +58,7 @@ public:
     [[nodiscard]] std::vector<domain::ArtifactRecord> list_artifacts(const std::string& run_id) const;
 
 private:
-    persistence::SQLiteStore store_;
+    std::unique_ptr<persistence::ExperimentStore> store_;
     telemetry::CsvTelemetryStore telemetry_store_;
     replay::ReplayService replay_service_;
     std::filesystem::path artifact_root_;
