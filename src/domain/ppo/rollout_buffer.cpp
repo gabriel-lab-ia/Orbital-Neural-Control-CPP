@@ -27,7 +27,7 @@ void RolloutBuffer::reset() {
     actions_ = torch::zeros({rollout_steps_, num_envs_, action_dim_}, options);
     log_probs_ = torch::zeros({rollout_steps_, num_envs_}, options);
     rewards_ = torch::zeros({rollout_steps_, num_envs_}, options);
-    dones_ = torch::zeros({rollout_steps_, num_envs_}, options);
+    terminals_ = torch::zeros({rollout_steps_, num_envs_}, options);
     values_ = torch::zeros({rollout_steps_, num_envs_}, options);
 }
 
@@ -38,13 +38,13 @@ void RolloutBuffer::add_step(
     const torch::Tensor& log_probs,
     const torch::Tensor& values,
     const std::span<const float> rewards,
-    const std::span<const float> dones
+    const std::span<const float> terminals
 ) {
     if (step_index < 0 || step_index >= rollout_steps_) {
         throw std::runtime_error("rollout buffer step index out of bounds");
     }
-    if (static_cast<int64_t>(rewards.size()) != num_envs_ || static_cast<int64_t>(dones.size()) != num_envs_) {
-        throw std::runtime_error("rollout buffer rewards/dones size mismatch");
+    if (static_cast<int64_t>(rewards.size()) != num_envs_ || static_cast<int64_t>(terminals.size()) != num_envs_) {
+        throw std::runtime_error("rollout buffer rewards/terminals size mismatch");
     }
 
     observations_.select(0, step_index).copy_(observations);
@@ -57,14 +57,14 @@ void RolloutBuffer::add_step(
         {num_envs_},
         torch::TensorOptions().dtype(torch::kFloat32)
     ).clone().to(device_);
-    auto dones_tensor = torch::from_blob(
-        const_cast<float*>(dones.data()),
+    auto terminals_tensor = torch::from_blob(
+        const_cast<float*>(terminals.data()),
         {num_envs_},
         torch::TensorOptions().dtype(torch::kFloat32)
     ).clone().to(device_);
 
     rewards_.select(0, step_index).copy_(rewards_tensor);
-    dones_.select(0, step_index).copy_(dones_tensor);
+    terminals_.select(0, step_index).copy_(terminals_tensor);
 }
 
 RolloutBatch RolloutBuffer::build_batch(
@@ -76,7 +76,7 @@ RolloutBatch RolloutBuffer::build_batch(
     auto gae = torch::zeros({num_envs_}, torch::TensorOptions().dtype(torch::kFloat32).device(device_));
 
     for (int64_t step = rollout_steps_ - 1; step >= 0; --step) {
-        const auto mask = 1.0f - dones_.select(0, step);
+        const auto mask = 1.0f - terminals_.select(0, step);
         const auto next_values = (step == rollout_steps_ - 1) ? last_values : values_.select(0, step + 1);
         const auto delta = rewards_.select(0, step) + gamma * next_values * mask - values_.select(0, step);
         gae = delta + (gamma * gae_lambda) * mask * gae;

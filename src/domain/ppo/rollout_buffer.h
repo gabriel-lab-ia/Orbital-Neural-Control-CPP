@@ -27,7 +27,7 @@ public:
         const torch::Tensor& log_probs,
         const torch::Tensor& values,
         std::span<const float> rewards,
-        std::span<const float> dones
+        std::span<const float> terminals
     );
 
     RolloutBatch build_batch(const torch::Tensor& last_values, float gamma, float gae_lambda) const;
@@ -45,7 +45,7 @@ private:
     torch::Tensor actions_;
     torch::Tensor log_probs_;
     torch::Tensor rewards_;
-    torch::Tensor dones_;
+    torch::Tensor terminals_;
     torch::Tensor values_;
 };
 
