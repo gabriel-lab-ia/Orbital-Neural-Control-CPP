@@ -8,6 +8,7 @@ namespace {
 constexpr float kMinLogStd = -1.2f;
 constexpr float kMaxLogStd = 0.35f;
 constexpr double kLogTwoPi = 1.8378770664093453;
+constexpr float kTanhEpsilon = 1.0e-6f;
 
 void init_linear(const torch::nn::Linear& layer, const double gain) {
     torch::NoGradGuard no_grad;
@@ -38,7 +39,7 @@ GaussianPolicyImpl::GaussianPolicyImpl(
 
 GaussianPolicyDistribution GaussianPolicyImpl::distribution(const torch::Tensor& observations) {
     const auto latent = encode(observations);
-    const auto mean = torch::tanh(actor_mean_->forward(latent));
+    const auto mean = actor_mean_->forward(latent);
     const auto std = torch::exp(torch::clamp(log_std_, kMinLogStd, kMaxLogStd)).expand_as(mean);
     return {mean, std};
 }
@@ -47,22 +48,27 @@ torch::Tensor GaussianPolicyImpl::sample_actions(
     const GaussianPolicyDistribution& distribution,
     const bool deterministic
 ) const {
-    auto actions = distribution.mean;
+    auto raw_actions = distribution.mean;
     if (!deterministic) {
-        actions = distribution.mean + distribution.std * torch::randn_like(distribution.mean);
+        raw_actions = distribution.mean + distribution.std * torch::randn_like(distribution.mean);
     }
-    return torch::clamp(actions, -1.0f, 1.0f);
+    return torch::tanh(raw_actions);
 }
 
 torch::Tensor GaussianPolicyImpl::log_prob(
     const torch::Tensor& actions,
     const GaussianPolicyDistribution& distribution
 ) const {
+    const auto bounded_actions = torch::clamp(actions, -1.0f + kTanhEpsilon, 1.0f - kTanhEpsilon);
+    const auto raw_actions = 0.5f * (torch::log1p(bounded_actions) - torch::log1p(-bounded_actions));
+
     const auto variance = distribution.std.pow(2);
-    const auto centered = actions - distribution.mean;
-    const auto log_probability =
+    const auto centered = raw_actions - distribution.mean;
+    const auto gaussian_log_probability =
         -0.5 * ((centered.pow(2) / variance) + 2.0 * distribution.std.log() + kLogTwoPi);
-    return log_probability.sum(-1);
+
+    const auto tanh_correction = torch::log(1.0f - bounded_actions.pow(2) + kTanhEpsilon);
+    return (gaussian_log_probability - tanh_correction).sum(-1);
 }
 
 torch::Tensor GaussianPolicyImpl::entropy(const GaussianPolicyDistribution& distribution) const {

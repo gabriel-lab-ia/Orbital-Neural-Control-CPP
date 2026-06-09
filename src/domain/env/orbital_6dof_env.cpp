@@ -11,7 +11,7 @@ namespace {
 
 constexpr double kDtSeconds = 0.25;
 constexpr int64_t kMaxSteps = 720;
-constexpr int64_t kStableStepGoal = 20;
+constexpr int64_t kStableStepGoal = 60;
 constexpr double kTargetRadiusM = 6'878'000.0;
 constexpr double kTargetSpeedMps = 7'612.0;
 constexpr double kMaxThrustN = 0.80;
@@ -42,19 +42,33 @@ OrbitalSixDofEnv::OrbitalSixDofEnv()
 }
 
 torch::Tensor OrbitalSixDofEnv::reset() {
-    std::uniform_real_distribution<double> phase_dist(-0.025, 0.025);
-    std::uniform_real_distribution<double> z_dist(-45.0, 45.0);
-    std::uniform_real_distribution<double> vz_dist(-0.10, 0.10);
+    std::uniform_real_distribution<double> phase_dist(-0.35, 0.35);
+    std::uniform_real_distribution<double> radial_offset_dist(-8'000.0, 8'000.0);
+    std::uniform_real_distribution<double> z_dist(-1'500.0, 1'500.0);
+    std::uniform_real_distribution<double> speed_offset_dist(-85.0, 85.0);
+    std::uniform_real_distribution<double> vz_dist(-8.0, 8.0);
+    std::uniform_real_distribution<double> angular_rate_dist(-0.025, 0.025);
 
     const double phase = phase_dist(rng_);
-    const double x = kTargetRadiusM * std::cos(phase);
-    const double y = kTargetRadiusM * std::sin(phase);
+    const double initial_radius = kTargetRadiusM + radial_offset_dist(rng_);
+    const double initial_speed = kTargetSpeedMps + speed_offset_dist(rng_);
+
+    const double x = initial_radius * std::cos(phase);
+    const double y = initial_radius * std::sin(phase);
 
     state_ = {};
     state_.position_m = {x, y, z_dist(rng_)};
-    state_.velocity_mps = {-kTargetSpeedMps * std::sin(phase), kTargetSpeedMps * std::cos(phase), vz_dist(rng_)};
+    state_.velocity_mps = {
+        -initial_speed * std::sin(phase),
+        initial_speed * std::cos(phase),
+        vz_dist(rng_)
+    };
     state_.attitude_wxyz = {1.0, 0.0, 0.0, 0.0};
-    state_.angular_rate_rps = {0.0, 0.0, 0.0};
+    state_.angular_rate_rps = {
+        angular_rate_dist(rng_),
+        angular_rate_dist(rng_),
+        angular_rate_dist(rng_)
+    };
     state_.mission_time_s = 0.0;
 
     step_count_ = 0;

@@ -200,7 +200,7 @@ RolloutBatch PPOTrainer::collect_rollout() {
     rollout_buffer_.reset();
 
     std::vector<float> reward_values(static_cast<std::size_t>(config_.num_envs), 0.0f);
-    std::vector<float> done_values(static_cast<std::size_t>(config_.num_envs), 0.0f);
+    std::vector<float> terminal_values(static_cast<std::size_t>(config_.num_envs), 0.0f);
 
     for (int64_t step = 0; step < config_.ppo.rollout_steps; ++step) {
         auto observation_batch = stack_observations().to(device_);
@@ -219,7 +219,7 @@ RolloutBatch PPOTrainer::collect_rollout() {
 
             const bool done = result.terminated || result.truncated;
             reward_values[static_cast<std::size_t>(env_index)] = result.reward;
-            done_values[static_cast<std::size_t>(env_index)] = done ? 1.0f : 0.0f;
+            terminal_values[static_cast<std::size_t>(env_index)] = result.terminated ? 1.0f : 0.0f;
             episode_returns_[static_cast<std::size_t>(env_index)] += result.reward;
             episode_lengths_[static_cast<std::size_t>(env_index)] += 1;
 
@@ -256,7 +256,7 @@ RolloutBatch PPOTrainer::collect_rollout() {
             policy.log_prob.detach(),
             policy.value.detach(),
             std::span<const float>(reward_values),
-            std::span<const float>(done_values)
+            std::span<const float>(terminal_values)
         );
 
         current_observations_ = std::move(next_observations);
