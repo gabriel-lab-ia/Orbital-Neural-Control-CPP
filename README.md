@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/assets/orbital-hero-banner.svg" alt="Orbital Neural Control CPP hero" width="100%" />
-</p>
+<img width="753" height="425" alt="WhatsApp Image 2026-06-09 at 15 48 59" src="https://github.com/user-attachments/assets/d93396e9-d71d-4604-b073-472a285b5366" />
 
 # Orbital Neural Control CPP
 
