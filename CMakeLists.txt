@@ -495,6 +495,7 @@ set_tests_properties(
     nmc_smoke_benchmark_auto
     PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    ENVIRONMENT "CUBLAS_WORKSPACE_CONFIG=:4096:8"
     TIMEOUT 240
 )
 

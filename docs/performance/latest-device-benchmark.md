@@ -10,3 +10,13 @@ This is a smoke-scale comparison, not a production performance claim. CUDA rows 
 | `auto` | `cpu` | `cpu` | `true` | -30.42900 | 0.0496045 | 0.0464270 | 0.0566350 |
 
 **CUDA unavailable:** the explicit CUDA benchmark failed cleanly; no CUDA acceleration is claimed.
+
+## Separate Historical CUDA Functional Validation
+
+A separate strict CUDA smoke train and evaluation completed on June 10, 2026 using an NVIDIA GeForce RTX 4050 Laptop GPU, CUDA Toolkit 12.5, and CUDA-enabled LibTorch cu124:
+
+- training runtime: `requested=cuda`, `resolved=cuda:0`, `fallback=false`
+- evaluation runtime: `libtorch_cuda`, `uses_cuda=true`, `fallback=false`
+- strict artifact validation and CTest passed after the run
+
+That validation confirms functional execution on the named local machine. It is separate from the table above, does not establish a CPU-versus-CUDA speedup, and does not claim native TensorRT acceleration.

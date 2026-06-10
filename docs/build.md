@@ -24,6 +24,17 @@ This script performs:
 3. Release configure with Ninja
 4. Build
 
+The default LibTorch variant is CPU. To switch an existing checkout to CUDA-enabled LibTorch and reconfigure:
+
+```bash
+LIBTORCH_VARIANT=cu124 ./tools/setup_libtorch.sh
+cmake -S . -B build -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+```
+
+The setup script records the installed variant and replaces an incompatible existing CPU/CUDA variant instead of silently reusing it.
+
 ## Manual deterministic build
 
 ```bash

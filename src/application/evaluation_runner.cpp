@@ -157,6 +157,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
     domain::config::validate_eval_config_or_throw(config);
     const auto resolved_device = domain::runtime::resolve_device(config.device);
     const auto device_metadata = domain::runtime::device_metadata_json(resolved_device);
+    common::validate_deterministic_cuda_environment_or_throw(resolved_device.torch_device.is_cuda());
     std::cout << "Compute device: requested="
               << domain::runtime::compute_backend_to_string(config.device.backend)
               << " resolved=" << resolved_device.torch_device.str()

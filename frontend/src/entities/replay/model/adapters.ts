@@ -28,10 +28,10 @@ function mapArtifactStatus(status: string): RunSummary["artifactStatus"] {
   return "unknown";
 }
 
-function toTelemetry(runId: string, environment: string, sample: TelemetrySampleDto): TelemetrySample {
+function toTelemetry(run: RunSummary, sample: TelemetrySampleDto): TelemetrySample {
   return {
-    runId,
-    environment,
+    runId: run.runId,
+    environment: run.environment,
     timestep: sample.step,
     missionTimeS: sample.mission_time_s,
     reward: sample.reward,
@@ -39,8 +39,8 @@ function toTelemetry(runId: string, environment: string, sample: TelemetrySample
     orbitalErrorKm: sample.orbital_error_km,
     velocityMagnitudeKmS: sample.velocity_magnitude_kmps,
     policyStd: sample.policy_std,
-    backend: "libtorch_cpu",
-    deterministic: true,
+    backend: run.backend,
+    deterministic: run.deterministic,
     positionKm: sample.position_km,
     velocityKmS: sample.velocity_kmps,
     controlVector: sample.control_vector,
@@ -62,11 +62,11 @@ function toOrbit(sample: TelemetrySampleDto): OrbitPathPoint {
   };
 }
 
-function toFrame(runId: string, environment: string, index: number, sample: TelemetrySampleDto): ReplayFrame {
+function toFrame(run: RunSummary, index: number, sample: TelemetrySampleDto): ReplayFrame {
   return {
     frameIndex: index,
     timestampIso: sample.timestamp,
-    telemetry: toTelemetry(runId, environment, sample),
+    telemetry: toTelemetry(run, sample),
     orbit: toOrbit(sample),
   };
 }
@@ -87,7 +87,7 @@ function toEpisodes(telemetry: TelemetrySampleDto[]): EpisodeSummary[] {
   ];
 }
 
-function toBenchmark(telemetry: TelemetrySampleDto[]): BenchmarkSummary {
+function toBenchmark(run: RunSummary, telemetry: TelemetrySampleDto[]): BenchmarkSummary {
   const meanReward = telemetry.length > 0
     ? telemetry.reduce((accumulator, sample) => accumulator + sample.reward, 0) / telemetry.length
     : 0;
@@ -95,8 +95,8 @@ function toBenchmark(telemetry: TelemetrySampleDto[]): BenchmarkSummary {
   return {
     totalTimesteps: telemetry.length,
     meanReward,
-    deterministic: true,
-    backend: "libtorch_cpu",
+    deterministic: run.deterministic,
+    backend: run.backend,
     artifactStatus: telemetry.length > 0 ? "complete" : "partial",
   };
 }
@@ -145,14 +145,13 @@ function toEvents(payload: ReplayPayloadDto): MissionEventSummary[] {
 
 export function replayPayloadToDataset(payload: ReplayPayloadDto): ReplayRunDataset {
   const runId = payload.run_id;
-  const environment = payload.run?.environment ?? "point_mass";
-
-  const frames = payload.telemetry.map((sample, index) => toFrame(runId, environment, index, sample));
+  const run = toRunSummary(runId, payload.run, payload.telemetry);
+  const frames = payload.telemetry.map((sample, index) => toFrame(run, index, sample));
   const orbitPath = frames.map((frame) => frame.orbit);
 
   return {
-    run: toRunSummary(runId, payload.run, payload.telemetry),
-    benchmark: toBenchmark(payload.telemetry),
+    run,
+    benchmark: toBenchmark(run, payload.telemetry),
     episodes: toEpisodes(payload.telemetry),
     events: toEvents(payload),
     frames,

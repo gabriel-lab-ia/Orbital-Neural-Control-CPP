@@ -6,6 +6,7 @@ NMC_BIN="${NMC_BIN:-${PROJECT_ROOT}/build/nmc}"
 SEED="${SEED:-7}"
 EPISODES="${EPISODES:-20}"
 DEVICE="${DEVICE:-auto}"
+export CUBLAS_WORKSPACE_CONFIG="${CUBLAS_WORKSPACE_CONFIG:-:4096:8}"
 TRAIN_RUN_ID="${TRAIN_RUN_ID:-trt_compare_train_q1}"
 if [[ "${TRAIN_RUN_ID}" == "trt_compare_train_q1" ]]; then
   TRAIN_RUN_ID="trt_compare_train_$(date +%Y%m%d_%H%M%S)"

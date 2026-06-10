@@ -162,6 +162,22 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build build
 ```
 
+### Deterministic CUDA setup
+
+The runtime keeps LibTorch deterministic algorithms enabled. On CUDA, deterministic CuBLAS operations require one of the supported workspace configurations to be set before launching `nmc`:
+
+```bash
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+LIBTORCH_VARIANT=cu124 ./tools/setup_libtorch.sh
+cmake -S . -B build -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+```
+
+The runtime fails with a clear error when CUDA is selected without this setting; it does not silently disable deterministic behavior. CUDA-enabled LibTorch and CUDA Toolkit/runtime libraries are local developer dependencies and are not vendored into this repository.
+
+Local functional validation on **June 10, 2026** used an NVIDIA GeForce RTX 4050 Laptop GPU, CUDA Toolkit 12.5, and CUDA-enabled LibTorch cu124. Strict CUDA train and evaluation completed with `requested=cuda`, `resolved=cuda:0`, and `fallback=false`. This validates the hardware-aware LibTorch path on that machine; environment simulation remains CPU-side and no universal CUDA performance claim is implied.
+
 ### 2) Smoke benchmark
 
 ```bash
@@ -173,7 +189,7 @@ cmake --build build
 
 ```bash
 ./build/nmc train --quick --run-id train_quick_001 --seed 7
-./build/nmc train --quick --device cuda --cuda-device 0 --no-cuda-fallback --run-id train_cuda_001
+CUBLAS_WORKSPACE_CONFIG=:4096:8 ./build/nmc train --quick --device cuda --cuda-device 0 --no-cuda-fallback --run-id train_cuda_001
 ```
 
 ### 4) Eval

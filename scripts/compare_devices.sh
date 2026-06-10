@@ -8,6 +8,7 @@ NMC_BIN="${NMC_BIN:-${PROJECT_ROOT}/build/nmc}"
 SEED="${SEED:-7}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 REPORT="${REPORT:-docs/performance/latest-device-benchmark.md}"
+export CUBLAS_WORKSPACE_CONFIG="${CUBLAS_WORKSPACE_CONFIG:-:4096:8}"
 
 if [[ ! -x "${NMC_BIN}" ]]; then
   echo "[compare_devices] nmc binary not found at ${NMC_BIN}" >&2
@@ -87,6 +88,21 @@ for row in rows:
     )
 if cuda_status != "available":
     lines.extend(["", "**CUDA unavailable:** the explicit CUDA benchmark failed cleanly; no CUDA acceleration is claimed."])
+
+lines.extend(
+    [
+        "",
+        "## Separate Historical CUDA Functional Validation",
+        "",
+        "A separate strict CUDA smoke train and evaluation completed on June 10, 2026 using an NVIDIA GeForce RTX 4050 Laptop GPU, CUDA Toolkit 12.5, and CUDA-enabled LibTorch cu124:",
+        "",
+        "- training runtime: `requested=cuda`, `resolved=cuda:0`, `fallback=false`",
+        "- evaluation runtime: `libtorch_cuda`, `uses_cuda=true`, `fallback=false`",
+        "- strict artifact validation and CTest passed after the run",
+        "",
+        "That validation confirms functional execution on the named local machine. It is separate from the table above, does not establish a CPU-versus-CUDA speedup, and does not claim native TensorRT acceleration.",
+    ]
+)
 
 report.parent.mkdir(parents=True, exist_ok=True)
 report.write_text("\n".join(lines) + "\n", encoding="utf-8")
