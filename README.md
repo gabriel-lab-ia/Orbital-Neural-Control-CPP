@@ -1,6 +1,6 @@
-<img width="753" height="425" alt="WhatsApp Image 2026-06-09 at 15 48 59" src="https://github.com/user-attachments/assets/d93396e9-d71d-4604-b073-472a285b5366" />
-
 # Orbital Control satellite System CPP
+
+<img width="753" height="425" alt="WhatsApp Image 2026-06-09 at 15 48 59" src="https://github.com/user-attachments/assets/d93396e9-d71d-4604-b073-472a285b5366" />
 
 C++20 orbital autonomy and AI systems platform with a reproducible CPU baseline, CUDA-aware LibTorch runtime, honest TensorRT fallback reporting, structured artifacts, and optional mission-control services.
 
