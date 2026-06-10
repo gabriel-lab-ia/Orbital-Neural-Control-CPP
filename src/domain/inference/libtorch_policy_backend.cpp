@@ -7,8 +7,9 @@ namespace nmc::domain::inference {
 LibTorchPolicyBackend::LibTorchPolicyBackend(
     const int64_t observation_dim,
     const int64_t action_dim,
-    const int64_t hidden_dim
-) {
+    const int64_t hidden_dim,
+    torch::Device device
+) : device_(std::move(device)) {
     model_ = ppo::PolicyValueModel(observation_dim, action_dim, hidden_dim);
     model_->to(device_);
     model_->eval();
@@ -23,9 +24,9 @@ InferenceBackendCapabilities LibTorchPolicyBackend::capabilities() const {
         .supports_dynamic_shapes = true,
         .supports_fp16 = false,
         .supports_int8 = false,
-        .uses_cuda = false,
+        .uses_cuda = device_.is_cuda(),
         .is_emulated = false,
-        .runtime = "libtorch_cpu",
+        .runtime = device_.is_cuda() ? "libtorch_cuda" : "libtorch_cpu",
         .configured_precision = InferencePrecision::kFp32
     };
 }
@@ -35,7 +36,7 @@ void LibTorchPolicyBackend::load_checkpoint(const std::filesystem::path& checkpo
         throw std::runtime_error("checkpoint not found: " + checkpoint_path.string());
     }
 
-    torch::load(model_, checkpoint_path.string());
+    torch::load(model_, checkpoint_path.string(), device_);
     model_->to(device_);
     model_->eval();
 }

@@ -23,6 +23,7 @@ struct RunManifest {
     std::vector<RunManifestArtifact> artifacts;
     std::optional<std::string> checkpoint_path;
     std::optional<std::string> error_message;
+    std::string runtime_json = "{}";
 };
 
 std::string render_run_manifest_json(const RunManifest& manifest);

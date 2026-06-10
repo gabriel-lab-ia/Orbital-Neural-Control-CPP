@@ -10,7 +10,12 @@ namespace nmc::domain::inference {
 
 class LibTorchPolicyBackend final : public PolicyInferenceBackend {
 public:
-    LibTorchPolicyBackend(int64_t observation_dim, int64_t action_dim, int64_t hidden_dim);
+    LibTorchPolicyBackend(
+        int64_t observation_dim,
+        int64_t action_dim,
+        int64_t hidden_dim,
+        torch::Device device = torch::Device(torch::kCPU)
+    );
 
     std::string backend_name() const override;
     InferenceBackendCapabilities capabilities() const override;
@@ -18,7 +23,7 @@ public:
     InferenceOutput infer(const torch::Tensor& observation, bool deterministic) override;
 
 private:
-    torch::Device device_{torch::kCPU};
+    torch::Device device_;
     ppo::PolicyValueModel model_{nullptr};
 };
 

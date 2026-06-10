@@ -20,3 +20,7 @@ If you find a vulnerability, please report it privately when the hosting platfor
 - Kubernetes manifests are minimal starter manifests, not hardened production infrastructure.
 - MLflow and database backups, network policies, TLS termination, secret rotation, and cluster-specific RBAC are not fully implemented here.
 - TensorRT/GPU deployment hardening is not claimed as complete.
+- The C++ backend has no authentication layer; keep it private and leave `ORBITAL_JOB_EXECUTOR=0` unless protected.
+- Device and checkpoint selection are validated at the CLI boundary, but model artifact provenance/signing is not implemented.
+
+Deployment-specific guidance is documented in `docs/deployment/security-notes.md`.

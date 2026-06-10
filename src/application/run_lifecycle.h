@@ -32,6 +32,7 @@ struct RunFailureContext {
     std::vector<infrastructure::artifacts::RunManifestArtifact> artifacts;
     std::optional<std::string> checkpoint_path;
     std::string error_message;
+    std::string runtime_json = "{}";
 };
 
 void record_run_start(

@@ -24,7 +24,8 @@ public:
         int64_t observation_dim,
         int64_t action_dim,
         int64_t hidden_dim,
-        InferencePrecision precision
+        InferencePrecision precision,
+        torch::Device fallback_device = torch::Device(torch::kCPU)
     );
 
     std::string backend_name() const override;

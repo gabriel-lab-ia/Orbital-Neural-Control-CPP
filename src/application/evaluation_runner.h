@@ -17,7 +17,9 @@ struct EvaluationRunOutput {
     float avg_episode_length = 0.0f;
     float success_rate = 0.0f;
     float avg_inference_latency_ms = 0.0f;
+    float p50_inference_latency_ms = 0.0f;
     float p95_inference_latency_ms = 0.0f;
+    std::string device_metadata_json;
 };
 
 class EvaluationRunner {

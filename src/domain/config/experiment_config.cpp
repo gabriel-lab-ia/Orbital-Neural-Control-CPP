@@ -11,6 +11,16 @@ std::string bool_to_json(const bool value) {
     return value ? "true" : "false";
 }
 
+std::string device_config_json(const runtime::DeviceConfig& config) {
+    std::ostringstream stream;
+    stream << '{';
+    stream << "\"backend\":\"" << runtime::compute_backend_to_string(config.backend) << "\",";
+    stream << "\"cuda_device_index\":" << config.cuda_device_index << ',';
+    stream << "\"allow_fallback\":" << bool_to_json(config.allow_fallback);
+    stream << '}';
+    return stream.str();
+}
+
 }  // namespace
 
 std::string to_json(const PPOHyperparameters& config) {
@@ -99,7 +109,8 @@ std::string to_json(const TrainConfig& config) {
                    : "null")
            << ',';
     stream << "\"point_mass_reward\":" << to_json(config.point_mass_reward) << ',';
-    stream << "\"trainer\":" << to_json(config.trainer);
+    stream << "\"trainer\":" << to_json(config.trainer) << ',';
+    stream << "\"device\":" << device_config_json(config.device);
     stream << '}';
     return stream.str();
 }
@@ -120,7 +131,8 @@ std::string to_json(const EvalConfig& config) {
                    ? "\"" + common::json_escape(config.mujoco_model_path->string()) + "\""
                    : "null")
            << ',';
-    stream << "\"point_mass_reward\":" << to_json(config.point_mass_reward);
+    stream << "\"point_mass_reward\":" << to_json(config.point_mass_reward) << ',';
+    stream << "\"device\":" << device_config_json(config.device);
     stream << '}';
     return stream.str();
 }
@@ -130,7 +142,8 @@ std::string to_json(const BenchmarkConfig& config) {
     stream << '{';
     stream << "\"benchmark_name\":\"" << common::json_escape(config.benchmark_name) << "\",";
     stream << "\"seed\":" << config.seed << ',';
-    stream << "\"quick\":" << bool_to_json(config.quick);
+    stream << "\"quick\":" << bool_to_json(config.quick) << ',';
+    stream << "\"device\":" << device_config_json(config.device);
     stream << '}';
     return stream.str();
 }

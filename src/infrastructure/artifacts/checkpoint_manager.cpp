@@ -34,13 +34,20 @@ void save_policy_checkpoint(
     stream << "hidden_dim=" << metadata.hidden_dim << '\n';
     stream << "seed=" << metadata.seed << '\n';
     stream << "created_at=" << metadata.created_at << '\n';
+    stream << "torch_device=" << metadata.torch_device << '\n';
+    stream << "compute_backend=" << metadata.compute_backend << '\n';
 }
 
-void load_policy_checkpoint(const std::filesystem::path& checkpoint_path, domain::ppo::PolicyValueModel& model) {
+void load_policy_checkpoint(
+    const std::filesystem::path& checkpoint_path,
+    domain::ppo::PolicyValueModel& model,
+    torch::Device device
+) {
     if (!std::filesystem::exists(checkpoint_path)) {
         throw std::runtime_error("checkpoint not found: " + checkpoint_path.string());
     }
-    torch::load(model, checkpoint_path.string());
+    torch::load(model, checkpoint_path.string(), device);
+    model->to(device);
 }
 
 CheckpointMetadata load_checkpoint_metadata(const std::filesystem::path& metadata_path) {
@@ -90,6 +97,8 @@ CheckpointMetadata load_checkpoint_metadata(const std::filesystem::path& metadat
     metadata.hidden_dim = parse_int64("hidden_dim");
     metadata.seed = parse_int64("seed");
     metadata.created_at = read_required("created_at");
+    metadata.torch_device = kv.contains("torch_device") ? kv.at("torch_device") : "cpu";
+    metadata.compute_backend = kv.contains("compute_backend") ? kv.at("compute_backend") : "cpu";
     return metadata;
 }
 

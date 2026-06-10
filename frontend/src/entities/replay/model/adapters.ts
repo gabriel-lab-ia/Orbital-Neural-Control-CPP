@@ -102,12 +102,29 @@ function toBenchmark(telemetry: TelemetrySampleDto[]): BenchmarkSummary {
 }
 
 function toRunSummary(runId: string, run: RunDto | null, telemetry: TelemetrySampleDto[]): RunSummary {
+  const summary = run?.summary ?? {};
+  const runtime = typeof summary.runtime === "object" && summary.runtime !== null
+    ? summary.runtime as Record<string, unknown>
+    : {};
+  const capabilities = typeof summary.backend_capabilities === "object" && summary.backend_capabilities !== null
+    ? summary.backend_capabilities as Record<string, unknown>
+    : {};
+  const stringValue = (value: unknown, fallback: string): string => typeof value === "string" ? value : fallback;
+  const numberValue = (value: unknown): number | null => typeof value === "number" ? value : null;
+
   return {
     runId,
     label: runId,
     mode: run?.mode ?? "replay",
     environment: run?.environment ?? "point_mass",
-    backend: "libtorch_cpu",
+    backend: stringValue(capabilities.runtime, stringValue(summary.backend, "unknown")),
+    torchDevice: stringValue(runtime.torch_device, "unknown"),
+    computeBackendRequested: stringValue(runtime.compute_backend_requested, "unknown"),
+    computeBackendResolved: stringValue(runtime.compute_backend_resolved, "unknown"),
+    cudaFallbackUsed: runtime.cuda_fallback_used === true,
+    avgInferenceLatencyMs: numberValue(summary.avg_inference_latency_ms),
+    p50InferenceLatencyMs: numberValue(summary.p50_inference_latency_ms),
+    p95InferenceLatencyMs: numberValue(summary.p95_inference_latency_ms),
     deterministic: true,
     totalTimesteps: telemetry.length,
     status: mapRunStatus(run?.status ?? "running"),

@@ -41,6 +41,7 @@ class ControlStepResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     service: str
+    detail: str | None = None
 
 
 app = FastAPI(
@@ -57,8 +58,11 @@ def health() -> HealthResponse:
 
 @app.get("/ready", response_model=HealthResponse)
 def ready() -> HealthResponse:
-    # A future C++ binding/RPC readiness check should verify model loading here.
-    return HealthResponse(status="ready", service="fastapi-serving")
+    return HealthResponse(
+        status="ready_stub_only",
+        service="fastapi-serving",
+        detail="No real C++/LibTorch control bridge is implemented.",
+    )
 
 
 @app.post("/control-step", response_model=ControlStepResponse)

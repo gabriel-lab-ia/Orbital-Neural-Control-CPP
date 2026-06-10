@@ -628,6 +628,7 @@ components:
         run_id: { type: string }
         seed: { type: integer }
         quick: { type: boolean }
+        device: { type: string, enum: [cpu, cuda, auto], default: cpu }
 
     Job:
       type: object

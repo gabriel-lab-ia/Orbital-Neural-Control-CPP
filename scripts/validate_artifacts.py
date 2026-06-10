@@ -31,6 +31,22 @@ def _check_file(path: Path, issues: list[ValidationIssue], label: str) -> None:
     if not path.is_file():
         issues.append(ValidationIssue("error", f"missing {label}: {path}"))
 
+def _validate_runtime_metadata(payload: dict[str, Any], path: Path, issues: list[ValidationIssue]) -> None:
+    runtime = payload.get("runtime")
+    if not isinstance(runtime, dict):
+        issues.append(ValidationIssue("error", f"runtime metadata missing in {path}"))
+        return
+    for key in (
+        "compute_backend_requested",
+        "compute_backend_resolved",
+        "torch_device",
+        "cuda_available",
+        "cuda_device_index",
+        "cuda_fallback_used",
+    ):
+        if key not in runtime:
+            issues.append(ValidationIssue("error", f"runtime metadata missing key '{key}' in {path}"))
+
 
 def _required_run_files(mode: str, status: str) -> list[str]:
     if status != "completed":
@@ -93,11 +109,15 @@ def _validate_runs(root: Path, strict: bool, issues: list[ValidationIssue]) -> d
                         f"summary run_id mismatch in {summary_path}: expected {run_id}",
                     )
                 )
+            if strict and schema_version == "1.1" and summary is not None:
+                _validate_runtime_metadata(summary, summary_path, issues)
 
-            if strict and schema_version == "1.0":
+            if strict and schema_version in {"1.0", "1.1"}:
                 artifacts = manifest.get("artifacts")
                 if not isinstance(artifacts, dict) or len(artifacts) == 0:
                     issues.append(ValidationIssue("error", f"manifest artifacts missing in {manifest_path}"))
+            if strict and schema_version == "1.1":
+                _validate_runtime_metadata(manifest, manifest_path, issues)
 
         manifests[run_id] = manifest
 
@@ -120,6 +140,11 @@ def _validate_benchmarks(root: Path, issues: list[ValidationIssue]) -> None:
         for key in ("benchmark_id", "benchmark_name", "train", "eval", "integrity", "functional"):
             if key not in latest_json:
                 issues.append(ValidationIssue("error", f"benchmark latest.json missing key: {key}"))
+        if str(latest_json.get("schema_version", "")) == "1.1":
+            for section in ("train", "eval"):
+                item = latest_json.get(section)
+                if isinstance(item, dict):
+                    _validate_runtime_metadata(item, benchmarks_dir / "latest.json", issues)
 
     latest_csv = benchmarks_dir / "latest.csv"
     if latest_csv.exists():
@@ -184,7 +209,7 @@ def _validate_database(
                 except json.JSONDecodeError:
                     issues.append(ValidationIssue("error", f"db summary_json invalid JSON for {run_id}"))
 
-            if strict and str(manifest.get("schema_version", "")) == "1.0":
+            if strict and str(manifest.get("schema_version", "")) in {"1.0", "1.1"}:
                 cursor.execute(
                     "SELECT COUNT(*) FROM run_artifacts WHERE run_id = ?;",
                     (run_id,),

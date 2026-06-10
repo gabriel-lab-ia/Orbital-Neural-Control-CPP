@@ -37,6 +37,9 @@ void validate_train_config_or_throw(const TrainConfig& config) {
     if (config.trainer.seed < 0) {
         errors.push_back("--seed must be >= 0");
     }
+    if (config.device.cuda_device_index < 0) {
+        errors.push_back("--cuda-device must be >= 0");
+    }
     if (config.trainer.num_envs <= 0) {
         errors.push_back("--num-envs must be > 0");
     }
@@ -112,6 +115,9 @@ void validate_eval_config_or_throw(const EvalConfig& config) {
     if (config.seed < 0) {
         errors.push_back("--seed must be >= 0");
     }
+    if (config.device.cuda_device_index < 0) {
+        errors.push_back("--cuda-device must be >= 0");
+    }
     if (config.episodes <= 0) {
         errors.push_back("--episodes must be > 0");
     }
@@ -143,6 +149,9 @@ void validate_benchmark_config_or_throw(const BenchmarkConfig& config) {
     }
     if (config.seed < 0) {
         errors.push_back("--seed must be >= 0");
+    }
+    if (config.device.cuda_device_index < 0) {
+        errors.push_back("--cuda-device must be >= 0");
     }
     throw_if_errors(errors, "benchmark config");
 }

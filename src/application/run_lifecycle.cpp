@@ -56,7 +56,8 @@ void record_run_failure(
             context.config_json,
             context.artifacts,
             context.checkpoint_path,
-            context.error_message
+            context.error_message,
+            context.runtime_json
         }
     );
     infrastructure::artifacts::write_text_file(layout.run_manifest_json, failed_manifest);

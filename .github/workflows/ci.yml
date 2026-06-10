@@ -108,7 +108,7 @@ jobs:
         run: |
           set -euxo pipefail
           ctest --test-dir build --output-on-failure --verbose --no-tests=error \
-            -R "nmc_smoke_benchmark|nmc_inference_parity"
+            -R "nmc_smoke_benchmark|nmc_smoke_benchmark_auto|nmc_inference_parity"
 
       - name: Validate artifact integrity and finite metrics
         run: |

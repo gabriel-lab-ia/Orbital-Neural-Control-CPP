@@ -18,6 +18,7 @@ struct JobLaunchRequest {
     std::string run_id;
     std::int64_t seed = 7;
     bool quick = true;
+    std::string device = "cpu";
 };
 
 class JobService {

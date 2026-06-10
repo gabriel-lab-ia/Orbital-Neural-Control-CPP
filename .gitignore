@@ -12,6 +12,7 @@
 /build-release-pgo-use/
 /build-debug-*/
 /build-tensorrt/
+/build-*/
 /compile_commands.json
 .vcpkg/
 /external/vcpkg/

@@ -3,6 +3,19 @@ import { Link } from "react-router-dom";
 import { useRunsQuery } from "@/shared/api/hooks/use-runs-query";
 import { Panel, PanelBody, PanelHeader, PanelTitle } from "@/shared/ui/panel";
 
+function nestedString(
+  source: Record<string, unknown> | null,
+  section: string,
+  field: string,
+): string {
+  const nested = source?.[section];
+  if (typeof nested !== "object" || nested === null) {
+    return "not reported";
+  }
+  const value = (nested as Record<string, unknown>)[field];
+  return typeof value === "string" ? value : "not reported";
+}
+
 export function RunExplorerPage(): JSX.Element {
   const { runs, loading, error } = useRunsQuery(300);
 
@@ -43,6 +56,8 @@ export function RunExplorerPage(): JSX.Element {
                   <th className="py-2 pr-3">environment</th>
                   <th className="py-2 pr-3">seed</th>
                   <th className="py-2 pr-3">status</th>
+                  <th className="py-2 pr-3">device</th>
+                  <th className="py-2 pr-3">backend runtime</th>
                   <th className="py-2 pr-3">started_at</th>
                   <th className="py-2 pr-3">artifact_dir</th>
                 </tr>
@@ -55,6 +70,8 @@ export function RunExplorerPage(): JSX.Element {
                     <td className="py-2 pr-3">{run.environment}</td>
                     <td className="mono py-2 pr-3">{run.seed}</td>
                     <td className="py-2 pr-3">{run.status}</td>
+                    <td className="mono py-2 pr-3">{nestedString(run.summary, "runtime", "torch_device")}</td>
+                    <td className="mono py-2 pr-3">{nestedString(run.summary, "backend_capabilities", "runtime")}</td>
                     <td className="py-2 pr-3">{run.started_at}</td>
                     <td className="mono py-2 pr-3">{run.artifact_dir}</td>
                   </tr>
@@ -62,7 +79,7 @@ export function RunExplorerPage(): JSX.Element {
 
                 {!loading && runs.length === 0 ? (
                   <tr>
-                    <td className="py-3 text-slate-400" colSpan={7}>
+                    <td className="py-3 text-slate-400" colSpan={9}>
                       No runs found.
                     </td>
                   </tr>

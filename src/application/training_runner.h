@@ -17,6 +17,7 @@ struct TrainingRunOutput {
     std::filesystem::path training_summary_path;
     domain::ppo::TrainingMetrics final_metrics{};
     int64_t completed_episodes = 0;
+    std::string device_metadata_json;
 };
 
 class TrainingRunner {

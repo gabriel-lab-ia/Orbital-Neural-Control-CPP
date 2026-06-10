@@ -9,7 +9,7 @@ namespace nmc::infrastructure::artifacts {
 std::string render_run_manifest_json(const RunManifest& manifest) {
     std::ostringstream stream;
     stream << "{\n";
-    stream << "  \"schema_version\": \"1.0\",\n";
+    stream << "  \"schema_version\": \"1.1\",\n";
     stream << "  \"run_id\": \"" << common::json_escape(manifest.run_id) << "\",\n";
     stream << "  \"mode\": \"" << common::json_escape(manifest.mode) << "\",\n";
     stream << "  \"environment\": \"" << common::json_escape(manifest.environment) << "\",\n";
@@ -23,6 +23,7 @@ std::string render_run_manifest_json(const RunManifest& manifest) {
         stream << "  \"error\": \"" << common::json_escape(*manifest.error_message) << "\",\n";
     }
     stream << "  \"config\": " << manifest.config_json << ",\n";
+    stream << "  \"runtime\": " << manifest.runtime_json << ",\n";
     stream << "  \"artifacts\": {\n";
     for (std::size_t index = 0; index < manifest.artifacts.size(); ++index) {
         const auto& artifact = manifest.artifacts[index];

@@ -15,6 +15,7 @@
 #include "domain/config/config_validation.h"
 #include "domain/env/environment_factory.h"
 #include "domain/inference/inference_backend_factory.h"
+#include "domain/runtime/device_resolver.h"
 
 namespace nmc::interfaces::cli {
 namespace {
@@ -88,6 +89,9 @@ void print_usage() {
         << "  --minibatch-size <int>\n"
         << "  --hidden-dim <int>\n"
         << "  --learning-rate <float>\n"
+        << "  --device <" << domain::runtime::supported_compute_backends() << ">\n"
+        << "  --cuda-device <int>\n"
+        << "  --no-cuda-fallback\n"
         << "  --run-id <string>\n"
         << "  --resume-checkpoint <path>\n"
         << "  --live-steps <int>\n"
@@ -108,6 +112,9 @@ void print_usage() {
         << "  --max-steps <int>\n"
         << "  --seed <int>\n"
         << "  --backend <" << domain::inference::supported_inference_backends() << ">\n"
+        << "  --device <" << domain::runtime::supported_compute_backends() << ">\n"
+        << "  --cuda-device <int>\n"
+        << "  --no-cuda-fallback\n"
         << "  --deterministic <bool>\n"
         << "  --run-id <string>\n"
         << "  --mujoco-model <path>\n"
@@ -124,6 +131,9 @@ void print_usage() {
         << "  --full\n"
         << "  --seed <int>\n"
         << "  --name <string>\n"
+        << "  --device <" << domain::runtime::supported_compute_backends() << ">\n"
+        << "  --cuda-device <int>\n"
+        << "  --no-cuda-fallback\n"
         << "  --help\n";
 }
 
@@ -157,6 +167,14 @@ int run_train(const int argc, char** argv) {
             config.trainer.hidden_dim = parse_int64(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--learning-rate") {
             config.trainer.ppo.learning_rate = parse_float(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--device") {
+            config.device.backend = domain::runtime::parse_compute_backend_or_throw(
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--cuda-device") {
+            config.device.cuda_device_index = parse_int64(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--no-cuda-fallback") {
+            config.device.allow_fallback = false;
         } else if (arg == "--run-id") {
             config.run_id = require_value(argc, argv, index, arg);
         } else if (arg == "--resume-checkpoint") {
@@ -221,6 +239,14 @@ int run_eval(const int argc, char** argv) {
             config.seed = parse_int64(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--backend") {
             config.inference_backend = require_value(argc, argv, index, arg);
+        } else if (arg == "--device") {
+            config.device.backend = domain::runtime::parse_compute_backend_or_throw(
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--cuda-device") {
+            config.device.cuda_device_index = parse_int64(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--no-cuda-fallback") {
+            config.device.allow_fallback = false;
         } else if (arg == "--deterministic") {
             config.deterministic_policy = parse_bool(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--run-id") {
@@ -277,6 +303,14 @@ int run_benchmark(const int argc, char** argv) {
             config.seed = parse_int64(arg, require_value(argc, argv, index, arg));
         } else if (arg == "--name") {
             config.benchmark_name = require_value(argc, argv, index, arg);
+        } else if (arg == "--device") {
+            config.device.backend = domain::runtime::parse_compute_backend_or_throw(
+                require_value(argc, argv, index, arg)
+            );
+        } else if (arg == "--cuda-device") {
+            config.device.cuda_device_index = parse_int64(arg, require_value(argc, argv, index, arg));
+        } else if (arg == "--no-cuda-fallback") {
+            config.device.allow_fallback = false;
         } else if (arg == "--help" || arg == "-h") {
             print_usage();
             return 0;

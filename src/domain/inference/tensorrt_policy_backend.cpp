@@ -40,9 +40,10 @@ TensorRtPolicyBackend::TensorRtPolicyBackend(
     const int64_t observation_dim,
     const int64_t action_dim,
     const int64_t hidden_dim,
-    const InferencePrecision precision
+    const InferencePrecision precision,
+    torch::Device fallback_device
 )
-    : fallback_backend_(observation_dim, action_dim, hidden_dim),
+    : fallback_backend_(observation_dim, action_dim, hidden_dim, std::move(fallback_device)),
       precision_(precision),
 #if defined(NMC_WITH_TENSORRT)
       native_runtime_compiled_(true),
@@ -81,7 +82,6 @@ InferenceBackendCapabilities TensorRtPolicyBackend::capabilities() const {
     auto fallback_caps = fallback_backend_.capabilities();
     fallback_caps.supports_fp16 = true;
     fallback_caps.supports_int8 = true;
-    fallback_caps.uses_cuda = false;
     fallback_caps.is_emulated = true;
     fallback_caps.runtime = fallback_runtime_;
     fallback_caps.configured_precision = precision_;

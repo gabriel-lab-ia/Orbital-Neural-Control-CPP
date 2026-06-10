@@ -328,6 +328,7 @@ set(NMC_RUNTIME_SOURCES
     src/common/time_utils.cpp
     src/domain/config/experiment_config.cpp
     src/domain/config/config_validation.cpp
+    src/domain/runtime/device_resolver.cpp
     src/domain/env/environment_factory.cpp
     src/domain/env/orbital_6dof_env.cpp
     src/domain/env/point_mass_env.cpp
@@ -477,10 +478,21 @@ nmc_try_enable_lto(nmc)
 enable_testing()
 add_test(
     NAME nmc_smoke_benchmark
-    COMMAND nmc benchmark --quick --name ctest_smoke --seed 7
+    COMMAND nmc benchmark --quick --device cpu --name ctest_smoke --seed 7
 )
 set_tests_properties(
     nmc_smoke_benchmark
+    PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    TIMEOUT 240
+)
+
+add_test(
+    NAME nmc_smoke_benchmark_auto
+    COMMAND nmc benchmark --quick --device auto --name ctest_smoke_auto --seed 7
+)
+set_tests_properties(
+    nmc_smoke_benchmark_auto
     PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     TIMEOUT 240

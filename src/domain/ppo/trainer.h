@@ -20,7 +20,8 @@ class PPOTrainer {
 public:
     PPOTrainer(
         config::TrainerConfig config,
-        env::EnvironmentPack environment_pack
+        env::EnvironmentPack environment_pack,
+        torch::Device device = torch::Device(torch::kCPU)
     );
 
     std::vector<TrainingMetrics> train();
@@ -39,7 +40,7 @@ private:
     float benchmark_inference_latency_ms();
 
     config::TrainerConfig config_;
-    torch::Device device_{torch::kCPU};
+    torch::Device device_;
     RolloutBuffer rollout_buffer_;
     PolicyValueModel model_{nullptr};
     std::unique_ptr<torch::optim::Adam> optimizer_;

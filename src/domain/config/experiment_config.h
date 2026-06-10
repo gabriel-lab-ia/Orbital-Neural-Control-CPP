@@ -6,6 +6,7 @@
 #include <string>
 
 #include "domain/env/point_mass_reward.h"
+#include "domain/runtime/device_resolver.h"
 
 namespace nmc::domain::config {
 
@@ -45,6 +46,7 @@ struct TrainConfig {
     std::optional<std::filesystem::path> resume_checkpoint;
     std::optional<std::filesystem::path> mujoco_model_path;
     env::PointMassRewardConfig point_mass_reward{};
+    runtime::DeviceConfig device{};
 };
 
 struct EvalConfig {
@@ -58,12 +60,14 @@ struct EvalConfig {
     std::string inference_backend = "libtorch";
     std::optional<std::filesystem::path> mujoco_model_path;
     env::PointMassRewardConfig point_mass_reward{};
+    runtime::DeviceConfig device{};
 };
 
 struct BenchmarkConfig {
     std::string benchmark_name = "smoke";
     int64_t seed = 7;
     bool quick = true;
+    runtime::DeviceConfig device{};
 };
 
 std::string to_json(const PPOHyperparameters& config);

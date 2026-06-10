@@ -11,6 +11,8 @@
 #include <type_traits>
 #include <vector>
 
+#include <torch/cuda.h>
+
 namespace nmc::domain::ppo {
 namespace {
 
@@ -43,8 +45,9 @@ float explained_variance_score(const torch::Tensor& predictions, const torch::Te
 
 }  // namespace
 
-PPOTrainer::PPOTrainer(config::TrainerConfig config, env::EnvironmentPack environment_pack)
+PPOTrainer::PPOTrainer(config::TrainerConfig config, env::EnvironmentPack environment_pack, torch::Device device)
     : config_(std::move(config)),
+      device_(std::move(device)),
       rollout_buffer_(
           config_.ppo.rollout_steps,
           config_.num_envs,
@@ -205,6 +208,7 @@ RolloutBatch PPOTrainer::collect_rollout() {
     for (int64_t step = 0; step < config_.ppo.rollout_steps; ++step) {
         auto observation_batch = stack_observations().to(device_);
         const auto policy = model_->act(observation_batch, false);
+        const auto actions_cpu = policy.action.to(torch::kCPU);
 
         std::vector<torch::Tensor> next_observations;
         next_observations.reserve(static_cast<std::size_t>(config_.num_envs));
@@ -214,7 +218,7 @@ RolloutBatch PPOTrainer::collect_rollout() {
 
         for (int64_t env_index = 0; env_index < step_env_count; ++env_index) {
             auto result = environments_[static_cast<std::size_t>(env_index)]->step(
-                policy.action[env_index].to(torch::kCPU)
+                actions_cpu[env_index]
             );
 
             const bool done = result.terminated || result.truncated;
@@ -299,7 +303,7 @@ TrainingMetrics PPOTrainer::update_policy(const RolloutBatch& batch, const int64
 
         auto permutation = torch::randperm(
             sample_count,
-            torch::TensorOptions().dtype(torch::kInt64).device(torch::kCPU)
+            torch::TensorOptions().dtype(torch::kInt64).device(device_)
         );
 
         for (int64_t start = 0; start < sample_count; start += config_.ppo.minibatch_size) {
@@ -456,10 +460,16 @@ float PPOTrainer::benchmark_inference_latency_ms() {
     for (int64_t warmup = 0; warmup < 32; ++warmup) {
         static_cast<void>(model_->act(observation, true));
     }
+    if (device_.is_cuda()) {
+        torch::cuda::synchronize(device_.index());
+    }
 
     const auto begin = std::chrono::steady_clock::now();
     for (int64_t iteration = 0; iteration < config_.benchmark_iterations; ++iteration) {
         static_cast<void>(model_->act(observation, true));
+    }
+    if (device_.is_cuda()) {
+        torch::cuda::synchronize(device_.index());
     }
     const auto end = std::chrono::steady_clock::now();
 

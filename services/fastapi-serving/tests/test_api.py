@@ -6,7 +6,8 @@ from app.main import ControlStepRequest, control_step, health, ready
 
 def test_health_and_ready() -> None:
     assert health().status == "ok"
-    assert ready().status == "ready"
+    assert ready().status == "ready_stub_only"
+    assert ready().detail is not None
 
 
 def test_control_step_returns_stubbed_response() -> None:

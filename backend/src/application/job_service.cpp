@@ -6,6 +6,8 @@
 #include "common/time_utils.h"
 
 #include <cstdlib>
+#include <stdexcept>
+#include <string_view>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -20,6 +22,8 @@ std::vector<std::string> command_args_for(const std::filesystem::path& repo_root
     args.reserve(16);
     args.push_back((repo_root / "build" / "nmc").string());
     args.push_back(domain::to_string(request.type));
+    args.push_back("--device");
+    args.push_back(request.device);
 
     switch (request.type) {
         case domain::JobType::Train:
@@ -108,6 +112,12 @@ std::string default_run_id(const domain::JobType type) {
     return std::string(domain::to_string(type)) + '_' + common::make_id("jobrun");
 }
 
+void validate_device_or_throw(const std::string_view device) {
+    if (device != "cpu" && device != "cuda" && device != "auto") {
+        throw std::invalid_argument("device must be one of cpu, cuda, auto");
+    }
+}
+
 }  // namespace
 
 JobService::JobService(std::filesystem::path repository_root, const bool executor_enabled)
@@ -118,6 +128,7 @@ JobService::~JobService() {
 }
 
 domain::JobRecord JobService::submit(const JobLaunchRequest& request) {
+    validate_device_or_throw(request.device);
     if (!request.run_id.empty()) {
         common::validate_run_id_or_throw(request.run_id, "run_id");
     }

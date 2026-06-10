@@ -69,31 +69,40 @@ std::unique_ptr<PolicyInferenceBackend> make_inference_backend(
     const InferenceBackendKind backend,
     const int64_t observation_dim,
     const int64_t action_dim,
-    const int64_t hidden_dim
+    const int64_t hidden_dim,
+    torch::Device libtorch_device
 ) {
     switch (backend) {
         case InferenceBackendKind::kLibTorch:
-            return std::make_unique<LibTorchPolicyBackend>(observation_dim, action_dim, hidden_dim);
+            return std::make_unique<LibTorchPolicyBackend>(
+                observation_dim,
+                action_dim,
+                hidden_dim,
+                std::move(libtorch_device)
+            );
         case InferenceBackendKind::kTensorRtFp32:
             return std::make_unique<TensorRtPolicyBackend>(
                 observation_dim,
                 action_dim,
                 hidden_dim,
-                InferencePrecision::kFp32
+                InferencePrecision::kFp32,
+                std::move(libtorch_device)
             );
         case InferenceBackendKind::kTensorRtFp16:
             return std::make_unique<TensorRtPolicyBackend>(
                 observation_dim,
                 action_dim,
                 hidden_dim,
-                InferencePrecision::kFp16
+                InferencePrecision::kFp16,
+                std::move(libtorch_device)
             );
         case InferenceBackendKind::kTensorRtInt8:
             return std::make_unique<TensorRtPolicyBackend>(
                 observation_dim,
                 action_dim,
                 hidden_dim,
-                InferencePrecision::kInt8
+                InferencePrecision::kInt8,
+                std::move(libtorch_device)
             );
     }
     throw std::runtime_error("unsupported inference backend kind");

@@ -13,6 +13,7 @@
 #include <boost/beast/version.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/json.hpp>
+#include <boost/system/error_code.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -35,6 +36,7 @@ struct ParsedJobRequestBody {
     std::optional<std::string> run_id;
     std::optional<std::int64_t> seed;
     std::optional<bool> quick;
+    std::optional<std::string> device;
 };
 
 std::optional<ParsedJobRequestBody> parse_job_request_body(
@@ -45,7 +47,7 @@ std::optional<ParsedJobRequestBody> parse_job_request_body(
         return ParsedJobRequestBody{};
     }
 
-    boost::json::error_code parse_error;
+    boost::system::error_code parse_error;
     const auto parsed = boost::json::parse(body, parse_error);
     if (parse_error) {
         error_message = "invalid JSON payload: " + parse_error.message();
@@ -82,6 +84,19 @@ std::optional<ParsedJobRequestBody> parse_job_request_body(
             return std::nullopt;
         }
         payload.quick = it->value().as_bool();
+    }
+
+    if (const auto it = object.find("device"); it != object.end()) {
+        if (!it->value().is_string()) {
+            error_message = "field 'device' must be a string";
+            return std::nullopt;
+        }
+        const std::string device(it->value().as_string().c_str());
+        if (device != "cpu" && device != "cuda" && device != "auto") {
+            error_message = "field 'device' must be one of cpu, cuda, auto";
+            return std::nullopt;
+        }
+        payload.device = device;
     }
 
     return payload;
@@ -450,6 +465,7 @@ http::status handle_post(
         request.run_id = payload.run_id.value_or("");
         request.seed = payload.seed.value_or(7);
         request.quick = payload.quick.value_or(true);
+        request.device = payload.device.value_or("cpu");
         return request;
     };
 

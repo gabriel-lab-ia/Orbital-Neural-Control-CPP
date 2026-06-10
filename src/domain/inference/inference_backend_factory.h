@@ -25,7 +25,8 @@ std::unique_ptr<PolicyInferenceBackend> make_inference_backend(
     InferenceBackendKind backend,
     int64_t observation_dim,
     int64_t action_dim,
-    int64_t hidden_dim
+    int64_t hidden_dim,
+    torch::Device libtorch_device = torch::Device(torch::kCPU)
 );
 
 }  // namespace nmc::domain::inference

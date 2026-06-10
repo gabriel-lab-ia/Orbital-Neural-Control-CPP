@@ -95,6 +95,15 @@ export function TelemetryInspectionPanel({ frame, run, events }: TelemetryInspec
           <DataField label="timestep" value={telemetry.timestep} />
           <DataField label="control vector" value={telemetry.controlVector.map((value) => formatNumber(value, 3)).join(", ")} />
           <DataField label="backend" value={telemetry.backend} />
+          <DataField label="torch device" value={run.torchDevice} />
+          <DataField label="compute requested" value={run.computeBackendRequested} />
+          <DataField label="compute resolved" value={run.computeBackendResolved} />
+          <DataField label="cuda fallback" value={formatBoolean(run.cudaFallbackUsed)} />
+          <DataField label="latency avg / p50 / p95 ms" value={
+            run.avgInferenceLatencyMs === null
+              ? "not reported"
+              : `${formatNumber(run.avgInferenceLatencyMs, 4)} / ${formatNumber(run.p50InferenceLatencyMs ?? 0, 4)} / ${formatNumber(run.p95InferenceLatencyMs ?? 0, 4)}`
+          } />
           <DataField label="deterministic" value={formatBoolean(telemetry.deterministic)} />
           <DataField label="artifact status" value={run.artifactStatus} />
           <DataField label="policy std" value={formatNumber(telemetry.policyStd, 5)} />

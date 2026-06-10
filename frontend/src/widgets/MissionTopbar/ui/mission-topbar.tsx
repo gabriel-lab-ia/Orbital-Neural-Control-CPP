@@ -62,10 +62,11 @@ export function MissionTopbar({ runs, selectedRun, onSelectRun }: MissionTopbarP
             </Link>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <HudBadge label="run_id" value={selectedRun.runId} />
             <HudBadge label="environment" value={selectedRun.environment} />
             <HudBadge label="backend" value={selectedRun.backend} />
+            <HudBadge label="torch device" value={selectedRun.torchDevice} />
             <HudBadge label="mode" value={selectedRun.mode} />
           </div>
 
@@ -78,6 +79,9 @@ export function MissionTopbar({ runs, selectedRun, onSelectRun }: MissionTopbarP
             </StatusChip>
             <StatusChip tone={selectedRun.artifactStatus === "complete" ? "ok" : "warning"}>
               artifact {selectedRun.artifactStatus}
+            </StatusChip>
+            <StatusChip tone={selectedRun.cudaFallbackUsed ? "warning" : "ok"}>
+              cuda fallback {selectedRun.cudaFallbackUsed ? "used" : "not used"}
             </StatusChip>
           </div>
         </div>

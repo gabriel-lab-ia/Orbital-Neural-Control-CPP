@@ -4,6 +4,13 @@ export interface RunSummary {
   mode: string;
   environment: string;
   backend: string;
+  torchDevice: string;
+  computeBackendRequested: string;
+  computeBackendResolved: string;
+  cudaFallbackUsed: boolean;
+  avgInferenceLatencyMs: number | null;
+  p50InferenceLatencyMs: number | null;
+  p95InferenceLatencyMs: number | null;
   deterministic: boolean;
   totalTimesteps: number;
   status: "ok" | "warning" | "running" | "failed";

@@ -2,13 +2,36 @@
 
 # Orbital Neural Control CPP
 
-C++20 orbital autonomy and AI deployment platform featuring PPO reinforcement learning, LibTorch inference, PostgreSQL telemetry, FastAPI services, MLflow experiment tracking, Docker-based workflows, Kubernetes deployment manifests, mission replay capabilities, and production-oriented MLOps architecture.
+C++20 orbital autonomy and AI systems platform with a reproducible CPU baseline, CUDA-aware LibTorch runtime, honest TensorRT fallback reporting, structured artifacts, and optional mission-control services.
+
+## Current Shipped Baseline
+
+- C++20 CLI: `train`, `eval`, and `benchmark`
+- PPO actor-critic with LibTorch CPU/CUDA-aware runtime
+- CPU-safe default plus `--device cpu|cuda|auto`, indexed CUDA selection, and explicit fallback metadata
+- SQLite telemetry and versioned artifact contracts
+- Deterministic CPU and auto-device smoke benchmarks
+- Optional TensorRT inference path with native versus fallback reporting
+
+## Optional Modules
+
+- C++ backend REST/WebSocket API
+- React/TypeScript Mission Control UI
+- FastAPI serving stub awaiting a real C++ bridge
+- Docker Compose services and Kubernetes starter manifests
+
+## Roadmap
+
+- CUDA-first vectorized environment simulation
+- native TensorRT production deployment and calibrated INT8 packaging
+- pybind11/gRPC bridge for live control serving
+- authenticated, hardened Kubernetes deployment
 
 ## Technology Stack
 
 <p>
   <img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white" />
-  <img alt="LibTorch" src="https://img.shields.io/badge/LibTorch-CPU%20First-ee4c2c?logo=pytorch&logoColor=white" />
+  <img alt="LibTorch" src="https://img.shields.io/badge/LibTorch-CPU%20%2F%20CUDA-ee4c2c?logo=pytorch&logoColor=white" />
   <img alt="PPO" src="https://img.shields.io/badge/RL-PPO-1f6feb" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-Telemetry-003B57?logo=sqlite&logoColor=white" />
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Optional%20Production-4169e1?logo=postgresql&logoColor=white" />
@@ -25,7 +48,7 @@ C++20 orbital autonomy and AI deployment platform featuring PPO reinforcement le
 
 ### Implemented baseline (CI-gated)
 
-- `nmc` runtime (CPU-first) in layered C++20 architecture under `src/`.
+- `nmc` runtime with CPU-safe default and CUDA-aware LibTorch execution under `src/`.
 - PPO actor-critic refactor with explicit components:
   - `GaussianPolicy`
   - `ValueNetwork`
@@ -48,7 +71,7 @@ C++20 orbital autonomy and AI deployment platform featuring PPO reinforcement le
 ### Roadmap (not marketed as shipped)
 
 - Full TensorRT production deployment pipeline (advanced calibration datasets + multi-profile packaging)
-- CUDA-first training path
+- CUDA-first vectorized environment simulation
 - richer control-safety formalism and hardware-in-the-loop integration
 
 ## Architecture (Baseline Runtime)
@@ -143,18 +166,21 @@ cmake --build build
 
 ```bash
 ./build/nmc benchmark --quick --name smoke_local --seed 7
+./build/nmc benchmark --quick --device auto --name smoke_auto --seed 7
 ```
 
 ### 3) Train
 
 ```bash
 ./build/nmc train --quick --run-id train_quick_001 --seed 7
+./build/nmc train --quick --device cuda --cuda-device 0 --no-cuda-fallback --run-id train_cuda_001
 ```
 
 ### 4) Eval
 
 ```bash
 ./build/nmc eval --checkpoint artifacts/latest/checkpoint.pt --episodes 10 --backend libtorch --run-id eval_local_001 --seed 7
+./build/nmc eval --device auto --checkpoint artifacts/latest/checkpoint.pt --episodes 10 --backend libtorch --run-id eval_auto_001
 ```
 
 ### 5) Optional TensorRT backend validation

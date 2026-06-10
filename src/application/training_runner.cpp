@@ -15,6 +15,7 @@
 #include "domain/config/config_validation.h"
 #include "domain/env/environment_factory.h"
 #include "domain/ppo/trainer.h"
+#include "domain/runtime/device_resolver.h"
 #include "infrastructure/artifacts/artifact_layout.h"
 #include "infrastructure/artifacts/checkpoint_manager.h"
 #include "infrastructure/artifacts/run_manifest.h"
@@ -30,14 +31,16 @@ std::string training_summary_json(
     const std::string& environment,
     const domain::ppo::TrainingMetrics& final,
     const int64_t completed_episodes,
-    const std::string& checkpoint_path
+    const std::string& checkpoint_path,
+    const std::string& device_metadata
 ) {
     std::ostringstream stream;
     stream << "{\n";
-    stream << "  \"schema_version\": \"1.0\",\n";
+    stream << "  \"schema_version\": \"1.1\",\n";
     stream << "  \"run_id\": \"" << common::json_escape(run_id) << "\",\n";
     stream << "  \"environment\": \"" << common::json_escape(environment) << "\",\n";
     stream << "  \"completed_episodes\": " << completed_episodes << ",\n";
+    stream << "  \"runtime\": " << device_metadata << ",\n";
     stream << "  \"final_metrics\": {\n";
     stream << "    \"update\": " << final.update << ",\n";
     stream << "    \"env_steps\": " << final.env_steps << ",\n";
@@ -82,6 +85,12 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
     }
     common::validate_run_id_or_throw(config.run_id, "--run-id");
     domain::config::validate_train_config_or_throw(config);
+    const auto resolved_device = domain::runtime::resolve_device(config.device);
+    const auto device_metadata = domain::runtime::device_metadata_json(resolved_device);
+    std::cout << "Compute device: requested="
+              << domain::runtime::compute_backend_to_string(config.device.backend)
+              << " resolved=" << resolved_device.torch_device.str()
+              << " fallback=" << (resolved_device.cuda_fallback_used ? "true" : "false") << '\n';
 
     const auto started_at = common::now_utc_iso8601();
     const auto layout = infrastructure::artifacts::make_layout(artifact_root_, config.run_id);
@@ -113,10 +122,14 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
 
         common::configure_determinism(static_cast<uint64_t>(config.trainer.seed), config.trainer.torch_num_threads);
         auto env_pack = domain::env::make_environment_pack(env_spec, config.trainer.num_envs);
-        domain::ppo::PPOTrainer trainer(config.trainer, std::move(env_pack));
+        domain::ppo::PPOTrainer trainer(config.trainer, std::move(env_pack), resolved_device.torch_device);
 
         if (config.resume_checkpoint.has_value()) {
-            infrastructure::artifacts::load_policy_checkpoint(*config.resume_checkpoint, trainer.model());
+            infrastructure::artifacts::load_policy_checkpoint(
+                *config.resume_checkpoint,
+                trainer.model(),
+                resolved_device.torch_device
+            );
             db.insert_event(
                 {
                     config.run_id,
@@ -170,6 +183,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
         checkpoint_meta.hidden_dim = config.trainer.hidden_dim;
         checkpoint_meta.seed = config.trainer.seed;
         checkpoint_meta.created_at = finished_at;
+        checkpoint_meta.torch_device = resolved_device.torch_device.str();
+        checkpoint_meta.compute_backend = domain::runtime::compute_backend_to_string(resolved_device.resolved_backend);
 
         infrastructure::artifacts::save_policy_checkpoint(
             layout.run_checkpoint_model,
@@ -194,7 +209,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
             config.environment,
             final_metrics,
             static_cast<int64_t>(completed_episodes.size()),
-            layout.run_checkpoint_model.string()
+            layout.run_checkpoint_model.string(),
+            device_metadata
         );
         infrastructure::artifacts::write_text_file(layout.train_summary_json, summary_json);
         infrastructure::artifacts::write_text_file(
@@ -213,7 +229,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
                 config_json,
                 train_manifest_artifacts(layout),
                 layout.run_checkpoint_model.string(),
-                std::nullopt
+                std::nullopt,
+                device_metadata
             }
         );
         infrastructure::artifacts::write_text_file(layout.run_manifest_json, manifest);
@@ -254,7 +271,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
             layout.run_checkpoint_meta,
             layout.train_summary_json,
             final_metrics,
-            static_cast<int64_t>(completed_episodes.size())
+            static_cast<int64_t>(completed_episodes.size()),
+            device_metadata
         };
     } catch (const std::exception& error) {
         const auto failed_at = common::now_utc_iso8601();
@@ -271,7 +289,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
                     config_json,
                     train_manifest_artifacts(layout),
                     layout.run_checkpoint_model.string(),
-                    error.what()
+                    error.what(),
+                    device_metadata
                 }
             );
         } catch (...) {
@@ -292,7 +311,8 @@ TrainingRunOutput TrainingRunner::run(const domain::config::TrainConfig& input_c
                     config_json,
                     train_manifest_artifacts(layout),
                     layout.run_checkpoint_model.string(),
-                    "unknown"
+                    "unknown",
+                    device_metadata
                 }
             );
         } catch (...) {

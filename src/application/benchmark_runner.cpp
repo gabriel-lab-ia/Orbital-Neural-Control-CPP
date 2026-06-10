@@ -28,7 +28,7 @@ std::string benchmark_json(
 ) {
     std::ostringstream stream;
     stream << "{\n";
-    stream << "  \"schema_version\": \"1.0\",\n";
+    stream << "  \"schema_version\": \"1.1\",\n";
     stream << "  \"benchmark_id\": \"" << common::json_escape(benchmark_id) << "\",\n";
     stream << "  \"benchmark_name\": \"" << common::json_escape(config.benchmark_name) << "\",\n";
     stream << "  \"quick\": " << (config.quick ? "true" : "false") << ",\n";
@@ -37,11 +37,14 @@ std::string benchmark_json(
     stream << "  \"train\": {\n";
     stream << "    \"run_id\": \"" << common::json_escape(train.run_id) << "\",\n";
     stream << "    \"checkpoint\": \"" << common::json_escape(train.checkpoint_path.string()) << "\",\n";
+    stream << "    \"runtime\": " << train.device_metadata_json << ",\n";
     stream << "    \"final_avg_episode_return\": " << train.final_metrics.avg_episode_return << ",\n";
     stream << "    \"final_success_rate\": " << train.final_metrics.success_rate << "\n";
     stream << "  },\n";
     stream << "  \"eval\": {\n";
     stream << "    \"run_id\": \"" << common::json_escape(eval.run_id) << "\",\n";
+    stream << "    \"runtime\": " << eval.device_metadata_json << ",\n";
+    stream << "    \"backend_runtime\": \"" << common::json_escape(eval.backend_runtime) << "\",\n";
     stream << "    \"avg_episode_return\": " << eval.avg_episode_return << ",\n";
     stream << "    \"avg_episode_length\": " << eval.avg_episode_length << ",\n";
     stream << "    \"success_rate\": " << eval.success_rate << "\n";
@@ -53,6 +56,7 @@ std::string benchmark_json(
     stream << "  },\n";
     stream << "  \"performance\": {\n";
     stream << "    \"eval_avg_inference_latency_ms\": " << eval.avg_inference_latency_ms << ",\n";
+    stream << "    \"eval_p50_inference_latency_ms\": " << eval.p50_inference_latency_ms << ",\n";
     stream << "    \"eval_p95_inference_latency_ms\": " << eval.p95_inference_latency_ms << "\n";
     stream << "  },\n";
     stream << "  \"integrity\": {\n";
@@ -79,7 +83,8 @@ std::string benchmark_csv(
     const bool artifacts_valid
 ) {
     std::ostringstream stream;
-    stream << "benchmark_id,train_run_id,eval_run_id,train_avg_return,train_success_rate,eval_avg_return,eval_success_rate,artifacts_valid\n";
+    stream << "benchmark_id,train_run_id,eval_run_id,train_avg_return,train_success_rate,eval_avg_return,eval_success_rate,"
+              "eval_avg_latency_ms,eval_p50_latency_ms,eval_p95_latency_ms,artifacts_valid\n";
     stream << benchmark_id << ','
            << train.run_id << ','
            << eval.run_id << ','
@@ -87,6 +92,9 @@ std::string benchmark_csv(
            << train.final_metrics.success_rate << ','
            << eval.avg_episode_return << ','
            << eval.success_rate << ','
+           << eval.avg_inference_latency_ms << ','
+           << eval.p50_inference_latency_ms << ','
+           << eval.p95_inference_latency_ms << ','
            << (artifacts_valid ? 1 : 0) << '\n';
     return stream.str();
 }
@@ -118,6 +126,7 @@ BenchmarkRunOutput BenchmarkRunner::run(const domain::config::BenchmarkConfig& c
         train_config.trainer.ppo.ppo_epochs = 2;
         train_config.trainer.ppo.minibatch_size = 64;
         train_config.live_rollout_steps = config.quick ? 48 : 96;
+        train_config.device = config.device;
 
         TrainingRunner training_runner(artifact_root_);
         const auto train_run = training_runner.run(train_config);
@@ -131,6 +140,7 @@ BenchmarkRunOutput BenchmarkRunner::run(const domain::config::BenchmarkConfig& c
         eval_config.seed = config.seed;
         eval_config.deterministic_policy = true;
         eval_config.inference_backend = "libtorch";
+        eval_config.device = config.device;
 
         EvaluationRunner evaluation_runner(artifact_root_);
         const auto eval_run = evaluation_runner.run(eval_config);

@@ -130,6 +130,7 @@ export interface CreateJobRequest {
   run_id?: string;
   seed?: number;
   quick?: boolean;
+  device?: "cpu" | "cuda" | "auto";
 }
 
 export interface ConfigPresetDto {

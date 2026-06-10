@@ -16,6 +16,8 @@ struct CheckpointMetadata {
     int64_t hidden_dim = 0;
     int64_t seed = 0;
     std::string created_at;
+    std::string torch_device = "cpu";
+    std::string compute_backend = "cpu";
 };
 
 std::filesystem::path metadata_path_for(const std::filesystem::path& checkpoint_path);
@@ -25,7 +27,11 @@ void save_policy_checkpoint(
     domain::ppo::PolicyValueModel& model,
     const CheckpointMetadata& metadata
 );
-void load_policy_checkpoint(const std::filesystem::path& checkpoint_path, domain::ppo::PolicyValueModel& model);
+void load_policy_checkpoint(
+    const std::filesystem::path& checkpoint_path,
+    domain::ppo::PolicyValueModel& model,
+    torch::Device device = torch::Device(torch::kCPU)
+);
 CheckpointMetadata load_checkpoint_metadata(const std::filesystem::path& metadata_path);
 
 }  // namespace nmc::infrastructure::artifacts

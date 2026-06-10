@@ -11,6 +11,8 @@
     "backend": {
       "description": "Optional backend stack dependencies.",
       "dependencies": [
+        "boost-asio",
+        "boost-beast",
         "boost-system",
         "boost-json",
         "libpq"

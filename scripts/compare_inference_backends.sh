@@ -5,6 +5,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NMC_BIN="${NMC_BIN:-${PROJECT_ROOT}/build/nmc}"
 SEED="${SEED:-7}"
 EPISODES="${EPISODES:-20}"
+DEVICE="${DEVICE:-auto}"
 TRAIN_RUN_ID="${TRAIN_RUN_ID:-trt_compare_train_q1}"
 if [[ "${TRAIN_RUN_ID}" == "trt_compare_train_q1" ]]; then
   TRAIN_RUN_ID="trt_compare_train_$(date +%Y%m%d_%H%M%S)"
@@ -18,7 +19,7 @@ if [[ ! -x "${NMC_BIN}" ]]; then
 fi
 
 echo "[compare_inference_backends] training reference checkpoint"
-"${NMC_BIN}" train --quick --run-id "${TRAIN_RUN_ID}" --seed "${SEED}"
+"${NMC_BIN}" train --quick --device "${DEVICE}" --run-id "${TRAIN_RUN_ID}" --seed "${SEED}"
 
 CHECKPOINT="artifacts/runs/${TRAIN_RUN_ID}/checkpoints/policy_last.pt"
 if [[ ! -f "${CHECKPOINT}" ]]; then
@@ -40,6 +41,7 @@ for backend in "${BACKENDS[@]}"; do
     --episodes "${EPISODES}" \
     --seed "${SEED}" \
     --backend "${backend}" \
+    --device "${DEVICE}" \
     --run-id "${run_id}"
 done
 
@@ -64,16 +66,19 @@ for backend in ("libtorch", "tensorrt_fp16", "tensorrt_int8"):
             "emulated": str(caps.get("is_emulated", True)).lower(),
             "avg_return": float(data.get("avg_episode_return", 0.0)),
             "avg_latency": float(data.get("avg_inference_latency_ms", 0.0)),
+            "p50_latency": float(data.get("p50_inference_latency_ms", 0.0)),
             "p95_latency": float(data.get("p95_inference_latency_ms", 0.0)),
+            "device": data.get("runtime", {}).get("torch_device", "unknown"),
             "summary": str(path),
         }
     )
 
-print("| Backend CLI | Runtime reported | Emulated | Avg episode return | Avg inference latency (ms) | P95 latency (ms) | Summary file |")
-print("| --- | --- | --- | ---: | ---: | ---: | --- |")
+print("| Backend CLI | Runtime reported | Device | Emulated | Avg episode return | Avg latency (ms) | P50 (ms) | P95 (ms) | Summary file |")
+print("| --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |")
 for row in rows:
     print(
-        f"| `{row['backend']}` | `{row['runtime']}` | `{row['emulated']}` | "
-        f"{row['avg_return']:.4f} | {row['avg_latency']:.7f} | {row['p95_latency']:.7f} | `{row['summary']}` |"
+        f"| `{row['backend']}` | `{row['runtime']}` | `{row['device']}` | `{row['emulated']}` | "
+        f"{row['avg_return']:.4f} | {row['avg_latency']:.7f} | {row['p50_latency']:.7f} | "
+        f"{row['p95_latency']:.7f} | `{row['summary']}` |"
     )
 PY

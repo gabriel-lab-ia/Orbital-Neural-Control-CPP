@@ -19,6 +19,7 @@
 #include "domain/config/config_validation.h"
 #include "domain/env/environment_factory.h"
 #include "domain/inference/inference_backend_factory.h"
+#include "domain/runtime/device_resolver.h"
 #include "infrastructure/artifacts/artifact_layout.h"
 #include "infrastructure/artifacts/checkpoint_manager.h"
 #include "infrastructure/artifacts/run_manifest.h"
@@ -100,15 +101,18 @@ std::string evaluation_summary_json(
     const float avg_episode_length,
     const float success_rate,
     const float avg_inference_latency_ms,
+    const float p50_inference_latency_ms,
     const float p95_inference_latency_ms,
-    const int64_t episodes
+    const int64_t episodes,
+    const std::string& device_metadata
 ) {
     std::ostringstream stream;
     stream << "{\n";
-    stream << "  \"schema_version\": \"1.0\",\n";
+    stream << "  \"schema_version\": \"1.1\",\n";
     stream << "  \"run_id\": \"" << common::json_escape(run_id) << "\",\n";
     stream << "  \"environment\": \"" << common::json_escape(environment) << "\",\n";
     stream << "  \"backend\": \"" << common::json_escape(backend) << "\",\n";
+    stream << "  \"runtime\": " << device_metadata << ",\n";
     stream << "  \"backend_capabilities\": {\n";
     stream << "    \"supports_dynamic_shapes\": " << (capabilities.supports_dynamic_shapes ? "true" : "false") << ",\n";
     stream << "    \"supports_fp16\": " << (capabilities.supports_fp16 ? "true" : "false") << ",\n";
@@ -124,6 +128,7 @@ std::string evaluation_summary_json(
     stream << "  \"avg_episode_length\": " << avg_episode_length << ",\n";
     stream << "  \"success_rate\": " << success_rate << ",\n";
     stream << "  \"avg_inference_latency_ms\": " << avg_inference_latency_ms << ",\n";
+    stream << "  \"p50_inference_latency_ms\": " << p50_inference_latency_ms << ",\n";
     stream << "  \"p95_inference_latency_ms\": " << p95_inference_latency_ms << "\n";
     stream << "}\n";
     return stream.str();
@@ -150,6 +155,12 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
     }
     common::validate_run_id_or_throw(config.run_id, "--run-id");
     domain::config::validate_eval_config_or_throw(config);
+    const auto resolved_device = domain::runtime::resolve_device(config.device);
+    const auto device_metadata = domain::runtime::device_metadata_json(resolved_device);
+    std::cout << "Compute device: requested="
+              << domain::runtime::compute_backend_to_string(config.device.backend)
+              << " resolved=" << resolved_device.torch_device.str()
+              << " fallback=" << (resolved_device.cuda_fallback_used ? "true" : "false") << '\n';
 
     const auto started_at = common::now_utc_iso8601();
     const auto layout = infrastructure::artifacts::make_layout(artifact_root_, config.run_id);
@@ -204,7 +215,8 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
             domain::inference::parse_inference_backend_or_throw(config.inference_backend),
             observation_dim,
             action_dim,
-            hidden_dim
+            hidden_dim,
+            resolved_device.torch_device
         );
         backend->load_checkpoint(checkpoint_path);
         const auto capabilities = backend->capabilities();
@@ -222,8 +234,14 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
             float success = 0.0f;
 
             for (int64_t step = 0; step < config.max_steps; ++step) {
+                if (capabilities.uses_cuda) {
+                    torch::cuda::synchronize(config.device.cuda_device_index);
+                }
                 const auto inference_begin = std::chrono::steady_clock::now();
                 const auto inference = backend->infer(observation, config.deterministic_policy);
+                if (capabilities.uses_cuda) {
+                    torch::cuda::synchronize(config.device.cuda_device_index);
+                }
                 const auto inference_end = std::chrono::steady_clock::now();
                 inference_latencies_ms.push_back(
                     std::chrono::duration<float, std::milli>(inference_end - inference_begin).count()
@@ -284,6 +302,7 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
         const auto avg_length = mean_int(lengths);
         const auto success_rate = mean_float(successes);
         const auto avg_inference_latency_ms = mean_float(inference_latencies_ms);
+        const auto p50_inference_latency_ms = percentile_approx(inference_latencies_ms, 0.50f);
         const auto p95_inference_latency_ms = percentile_approx(inference_latencies_ms, 0.95f);
 
         summary_json = evaluation_summary_json(
@@ -296,8 +315,10 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
             avg_length,
             success_rate,
             avg_inference_latency_ms,
+            p50_inference_latency_ms,
             p95_inference_latency_ms,
-            config.episodes
+            config.episodes,
+            device_metadata
         );
         infrastructure::artifacts::write_text_file(layout.eval_summary_json, summary_json);
         infrastructure::artifacts::write_text_file(
@@ -317,7 +338,8 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
                 config_json,
                 eval_manifest_artifacts(layout),
                 checkpoint_path.string(),
-                std::nullopt
+                std::nullopt,
+                device_metadata
             }
         );
         infrastructure::artifacts::write_text_file(layout.run_manifest_json, manifest);
@@ -356,7 +378,9 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
             avg_length,
             success_rate,
             avg_inference_latency_ms,
-            p95_inference_latency_ms
+            p50_inference_latency_ms,
+            p95_inference_latency_ms,
+            device_metadata
         };
     } catch (const std::exception& error) {
         const auto failed_at = common::now_utc_iso8601();
@@ -373,7 +397,8 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
                     config_json,
                     eval_manifest_artifacts(layout),
                     checkpoint_path.string(),
-                    error.what()
+                    error.what(),
+                    device_metadata
                 }
             );
         } catch (...) {
@@ -394,7 +419,8 @@ EvaluationRunOutput EvaluationRunner::run(const domain::config::EvalConfig& inpu
                     config_json,
                     eval_manifest_artifacts(layout),
                     checkpoint_path.string(),
-                    "unknown"
+                    "unknown",
+                    device_metadata
                 }
             );
         } catch (...) {
