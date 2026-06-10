@@ -285,23 +285,6 @@ Envelope fields:
 - `source`
 - `run_id`
 - `payload`
-
-## Frontend Mission Console (Optional)
-
-Current frontend stack is **React.js + TypeScript**
-
-Implemented UX highlights:
-
-- replay mode and live mode
-- typed API client from OpenAPI contract (`frontend/src/shared/api/generated/orbital-api.ts`)
-- 3D Earth mission viewport with OrbitControls, atmosphere glow, orbit lines, and animated satellite
-- local high-quality Earth texture support (`frontend/public/textures/earth/*`) with safe procedural fallback
-- orbit path + satellite trace + timeline scrubber + event markers
-- technical telemetry and benchmark tables for engineering inspection
-  
-<img width="1817" height="791" alt="Screenshot_2026-04-16_13-23-23" src="https://github.com/user-attachments/assets/ef6b3c2f-7bf1-452c-a50f-ad7b4d8b1d91" />
-
-
 ## Docker / Compose
 
 Bring up optional services:
