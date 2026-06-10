@@ -13,13 +13,6 @@ C++20 orbital autonomy and AI systems platform with a reproducible CPU baseline,
 - Deterministic CPU and auto-device smoke benchmarks
 - Optional TensorRT inference path with native versus fallback reporting
 
-## Optional Modules
-
-- C++ backend REST/WebSocket API
-- React/TypeScript Mission Control UI
-- FastAPI serving stub awaiting a real C++ bridge
-- Docker Compose services and Kubernetes starter manifests
-
 ## Roadmap
 
 - CUDA-first vectorized environment simulation
