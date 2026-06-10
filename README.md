@@ -37,10 +37,6 @@ C++20 orbital autonomy and AI systems platform with a reproducible CPU baseline,
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Optional%20Production-4169e1?logo=postgresql&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Optional%20Serving-009688?logo=fastapi&logoColor=white" />
   <img alt="Kubernetes" src="https://img.shields.io/badge/Kubernetes-Starter%20Manifests-326ce5?logo=kubernetes&logoColor=white" />
-  <img alt="TensorRT" src="https://img.shields.io/badge/TensorRT-Optional-76B900?logo=nvidia&logoColor=white" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white" />
-  <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-Runtime-f7df1e?logo=javascript&logoColor=black" />
-  <img alt="React" src="https://img.shields.io/badge/React-Mission%20UI-61dafb?logo=react&logoColor=black" />
   <img alt="Linux" src="https://img.shields.io/badge/Linux-Primary%20Target-fcc624?logo=linux&logoColor=black" />
 </p>
 
