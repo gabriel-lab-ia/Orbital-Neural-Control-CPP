@@ -27,7 +27,6 @@ C++20 orbital autonomy and AI systems platform with a reproducible CPU baseline,
   <img alt="LibTorch" src="https://img.shields.io/badge/LibTorch-CPU%20%2F%20CUDA-ee4c2c?logo=pytorch&logoColor=white" />
   <img alt="PPO" src="https://img.shields.io/badge/RL-PPO-1f6feb" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-Telemetry-003B57?logo=sqlite&logoColor=white" />
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Optional%20Production-4169e1?logo=postgresql&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Optional%20Serving-009688?logo=fastapi&logoColor=white" />
   <img alt="Kubernetes" src="https://img.shields.io/badge/Kubernetes-Starter%20Manifests-326ce5?logo=kubernetes&logoColor=white" />
   <img alt="Linux" src="https://img.shields.io/badge/Linux-Primary%20Target-fcc624?logo=linux&logoColor=black" />
